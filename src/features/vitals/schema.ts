@@ -21,6 +21,19 @@ export const weightSchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
+export const bloodPanelSchema = z.object({
+  reading_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  s_chol: z.number().min(0).max(100).optional(),
+  s_tag: z.number().min(0).max(100).optional(),
+  s_hdl: z.number().min(0).max(100).optional(),
+  non_hdl: z.number().min(0).max(100).optional(),
+  s_ck: z.number().min(0).max(100).optional(),
+  b_hba1c_dc: z.number().min(0).max(20).optional(),
+  b_hba1c_if: z.number().min(0).max(200).optional(),
+  notes: z.string().max(1000).optional(),
+});
+
 export type BloodPressureFormData = z.infer<typeof bloodPressureSchema>;
 export type Hba1cFormData = z.infer<typeof hba1cSchema>;
 export type WeightFormData = z.infer<typeof weightSchema>;
+export type BloodPanelFormData = z.infer<typeof bloodPanelSchema>;

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useBloodPressureReadings, useCreateBloodPressure, useHba1cReadings, useCreateHba1c, useWeightReadings, useCreateWeight } from "@/features/vitals/hooks";
+import { useBloodPressureReadings, useCreateBloodPressure, useUpdateBloodPressure, useWeightReadings, useCreateWeight, useUpdateWeight, useBloodPanelReadings, useCreateBloodPanel, useUpdateBloodPanel } from "@/features/vitals/hooks";
 import { createClient } from "@/lib/supabase/client";
-import { bloodPressureSchema, hba1cSchema, weightSchema, type BloodPressureFormData, type Hba1cFormData, type WeightFormData } from "@/features/vitals/schema";
+import { bloodPressureSchema, weightSchema, bloodPanelSchema, type BloodPressureFormData, type WeightFormData } from "@/features/vitals/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { buttonVariants } from "@/components/ui/button";
-import { Plus, Heart, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -21,20 +22,57 @@ const dateStr = format(new Date(), "yyyy-MM-dd");
 
 const supabase = createClient();
 
+const panelFields = [
+  { key: "s_chol" as const, label: "S-CHOL", description: "Total cholesterol", unit: "mmol/l", range: "Normal: below 5.0 mmol/L" },
+  { key: "s_tag" as const, label: "S-TAG", description: "Triglycerides", unit: "mmol/l", range: "Normal: below 1.7 mmol/L" },
+  { key: "s_hdl" as const, label: "S-HDL", description: "HDL cholesterol", unit: "mmol/l", range: "Good: above 1.0 mmol/L (men), above 1.2 mmol/L (women)" },
+  { key: "non_hdl" as const, label: "non-HDL", description: "Non-HDL cholesterol", unit: "mmol/l", range: "Normal: below 4.0 mmol/L" },
+  { key: "s_ck" as const, label: "S-CK", description: "Creatine kinase", unit: "ukat/l", range: "Range: 0.2–2.27 ukat/L (may vary by lab/sex)" },
+  { key: "b_hba1c_dc" as const, label: "B-HbA1c DC", description: "HbA1c in DCCT %", unit: "%", range: "Normal: <6.0%; 6.0–6.4% prediabetes; ≥6.5% diabetes" },
+  { key: "b_hba1c_if" as const, label: "B-HbA1c IF", description: "HbA1c in IFCC mmol/mol", unit: "mmol/mol", range: "Normal: ≤41; 42–47 prediabetes; ≥48 diabetes" },
+];
+
+function panelLevel(value: number | null, key: string): "low" | "normal" | "borderline" | "high" | null {
+  if (value == null) return null;
+  switch (key) {
+    case "s_chol": return value >= 5.0 ? "high" : "normal";
+    case "s_tag": return value >= 1.7 ? "high" : "normal";
+    case "s_hdl": return value < 1.0 ? "low" : "normal";
+    case "non_hdl": return value >= 4.0 ? "high" : "normal";
+    case "s_ck": return value < 0.2 ? "low" : value > 2.27 ? "high" : "normal";
+    case "b_hba1c_dc": return value >= 6.5 ? "high" : value >= 6.0 ? "borderline" : "normal";
+    case "b_hba1c_if": return value >= 48 ? "high" : value >= 42 ? "borderline" : "normal";
+    default: return null;
+  }
+}
+
+const levelColors: Record<string, string> = {
+  low: "text-red-600 dark:text-red-400",
+  normal: "text-green-600 dark:text-green-400",
+  borderline: "text-amber-600 dark:text-amber-400",
+  high: "text-red-600 dark:text-red-400",
+};
+
 export default function VitalsPage() {
   const { data: bpReadings } = useBloodPressureReadings();
-  const { data: hba1cReadings } = useHba1cReadings();
   const { data: weightReadings } = useWeightReadings();
+  const { data: panelReadings } = useBloodPanelReadings();
   const createBP = useCreateBloodPressure();
-  const createHba1c = useCreateHba1c();
+  const updateBP = useUpdateBloodPressure();
   const createWeight = useCreateWeight();
+  const updateWeight = useUpdateWeight();
+  const createPanel = useCreateBloodPanel();
+  const updatePanel = useUpdateBloodPanel();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editType, setEditType] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [tab, setTab] = useState("blood-pressure");
 
   const [bpForm, setBpForm] = useState<BloodPressureFormData>({ reading_date: dateStr, reading_time: "", systolic: 120, diastolic: 80, heart_rate: null, notes: "" });
-  const [hba1cForm, setHba1cForm] = useState<Hba1cFormData>({ reading_date: dateStr, percentage: 5.7, notes: "" });
   const [weightForm, setWeightForm] = useState<WeightFormData>({ reading_date: dateStr, weight_kg: 70, notes: "" });
+  const [panelForm, setPanelForm] = useState({ reading_date: dateStr, s_chol: "", s_tag: "", s_hdl: "", non_hdl: "", s_ck: "", b_hba1c_dc: "", b_hba1c_if: "", notes: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmitBP(e: React.FormEvent) {
@@ -52,22 +90,73 @@ export default function VitalsPage() {
     });
   }
 
-  function handleSubmitHba1c(e: React.FormEvent) {
-    e.preventDefault();
-    const result = hba1cSchema.safeParse(hba1cForm);
-    if (!result.success) { toast.error("Invalid values"); return; }
-    createHba1c.mutate(result.data, {
-      onSuccess: () => { toast.success("HbA1c saved"); setOpen(false); },
-      onError: (err) => toast.error(err.message),
-    });
-  }
-
   function handleSubmitWeight(e: React.FormEvent) {
     e.preventDefault();
     const result = weightSchema.safeParse(weightForm);
     if (!result.success) { toast.error("Invalid values"); return; }
     createWeight.mutate(result.data, {
       onSuccess: () => { toast.success("Weight saved"); setOpen(false); },
+      onError: (err) => toast.error(err.message),
+    });
+  }
+
+  function openEditVitals(type: string, row: any) {
+    setEditType(type);
+    setEditId(row.id);
+    if (type === "bp") {
+      setBpForm({ reading_date: row.reading_date, reading_time: row.reading_time ?? "", systolic: row.systolic, diastolic: row.diastolic, heart_rate: row.heart_rate, notes: row.notes ?? "" });
+    } else if (type === "weight") {
+      setWeightForm({ reading_date: row.reading_date, weight_kg: row.weight_kg, notes: row.notes ?? "" });
+    }
+    setEditOpen(true);
+  }
+
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId || !editType) return;
+    if (editType === "bp") {
+      const r = bloodPressureSchema.safeParse(bpForm);
+      if (!r.success) { toast.error("Invalid values"); return; }
+      updateBP.mutate({ id: editId, ...r.data }, { onSuccess: () => { toast.success("BP updated"); setEditOpen(false); }, onError: (err) => toast.error(err.message) });
+    } else if (editType === "weight") {
+      const r = weightSchema.safeParse(weightForm);
+      if (!r.success) { toast.error("Invalid values"); return; }
+      updateWeight.mutate({ id: editId, ...r.data }, { onSuccess: () => { toast.success("Weight updated"); setEditOpen(false); }, onError: (err) => toast.error(err.message) });
+    } else if (editType === "panel") {
+      const payload = {
+        reading_date: panelForm.reading_date,
+        s_chol: panelForm.s_chol === "" ? undefined : Number(panelForm.s_chol),
+        s_tag: panelForm.s_tag === "" ? undefined : Number(panelForm.s_tag),
+        s_hdl: panelForm.s_hdl === "" ? undefined : Number(panelForm.s_hdl),
+        non_hdl: panelForm.non_hdl === "" ? undefined : Number(panelForm.non_hdl),
+        s_ck: panelForm.s_ck === "" ? undefined : Number(panelForm.s_ck),
+        b_hba1c_dc: panelForm.b_hba1c_dc === "" ? undefined : Number(panelForm.b_hba1c_dc),
+        b_hba1c_if: panelForm.b_hba1c_if === "" ? undefined : Number(panelForm.b_hba1c_if),
+        notes: panelForm.notes,
+      };
+      const r = bloodPanelSchema.safeParse(payload);
+      if (!r.success) { toast.error("Invalid values"); return; }
+      updatePanel.mutate({ id: editId, ...r.data }, { onSuccess: () => { toast.success("Blood panel updated"); setEditOpen(false); }, onError: (err) => toast.error(err.message) });
+    }
+  }
+
+  function handleSubmitPanel(e: React.FormEvent) {
+    e.preventDefault();
+    const payload = {
+      reading_date: panelForm.reading_date,
+      s_chol: panelForm.s_chol === "" ? undefined : Number(panelForm.s_chol),
+      s_tag: panelForm.s_tag === "" ? undefined : Number(panelForm.s_tag),
+      s_hdl: panelForm.s_hdl === "" ? undefined : Number(panelForm.s_hdl),
+      non_hdl: panelForm.non_hdl === "" ? undefined : Number(panelForm.non_hdl),
+      s_ck: panelForm.s_ck === "" ? undefined : Number(panelForm.s_ck),
+      b_hba1c_dc: panelForm.b_hba1c_dc === "" ? undefined : Number(panelForm.b_hba1c_dc),
+      b_hba1c_if: panelForm.b_hba1c_if === "" ? undefined : Number(panelForm.b_hba1c_if),
+      notes: panelForm.notes,
+    };
+    const result = bloodPanelSchema.safeParse(payload);
+    if (!result.success) { toast.error("Invalid values"); return; }
+    createPanel.mutate(result.data, {
+      onSuccess: () => { toast.success("Blood panel saved"); setOpen(false); },
       onError: (err) => toast.error(err.message),
     });
   }
@@ -83,11 +172,57 @@ export default function VitalsPage() {
           <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Reading</DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Vitals Reading</DialogTitle></DialogHeader>
-            <Tabs value={tab} onValueChange={setTab}>
+        {/* Edit Dialog */}
+        <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditId(null); setEditType(null); } }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit {editType === "bp" ? "Blood Pressure" : editType === "panel" ? "Blood Panel" : "Weight"}</DialogTitle></DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {editType === "bp" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Systolic</Label><Input type="number" value={bpForm.systolic} onChange={(e) => setBpForm({ ...bpForm, systolic: Number(e.target.value) })} /></div>
+                    <div className="space-y-2"><Label>Diastolic</Label><Input type="number" value={bpForm.diastolic} onChange={(e) => setBpForm({ ...bpForm, diastolic: Number(e.target.value) })} /></div>
+                  </div>
+                  <div className="space-y-2"><Label>Heart Rate</Label><Input type="number" value={bpForm.heart_rate ?? ""} onChange={(e) => setBpForm({ ...bpForm, heart_rate: e.target.value ? Number(e.target.value) : null })} /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label>Date</Label><Input type="date" value={bpForm.reading_date} onChange={(e) => setBpForm({ ...bpForm, reading_date: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Time</Label><Input type="time" value={bpForm.reading_time} onChange={(e) => setBpForm({ ...bpForm, reading_time: e.target.value })} /></div>
+                  </div>
+                  <div className="space-y-2"><Label>Notes</Label><Textarea value={bpForm.notes} onChange={(e) => setBpForm({ ...bpForm, notes: e.target.value })} /></div>
+                </>
+              )}
+              {editType === "weight" && (
+                <>
+                  <div className="space-y-2"><Label>Weight (kg)</Label><Input type="number" step="0.1" value={weightForm.weight_kg} onChange={(e) => setWeightForm({ ...weightForm, weight_kg: Number(e.target.value) })} /></div>
+                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={weightForm.reading_date} onChange={(e) => setWeightForm({ ...weightForm, reading_date: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Notes</Label><Textarea value={weightForm.notes} onChange={(e) => setWeightForm({ ...weightForm, notes: e.target.value })} /></div>
+                </>
+              )}
+              {editType === "panel" && (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {panelFields.map((f) => (
+                      <div key={f.key} className={f.key === "b_hba1c_if" ? "col-span-2" : ""}>
+                        <Label>{f.label} ({f.unit})</Label>
+                        <Input type="number" step="0.01" min="0" value={panelForm[f.key]} onChange={(e) => setPanelForm({ ...panelForm, [f.key]: e.target.value })} />
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">{f.range}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={panelForm.reading_date} onChange={(e) => setPanelForm({ ...panelForm, reading_date: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Notes</Label><Textarea value={panelForm.notes} onChange={(e) => setPanelForm({ ...panelForm, notes: e.target.value })} rows={2} /></div>
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={updateBP.isPending || updateWeight.isPending || updatePanel.isPending}>Save Changes</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+      <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="blood-pressure">BP</TabsTrigger>
-                <TabsTrigger value="hba1c">HbA1c</TabsTrigger>
                 <TabsTrigger value="weight">Weight</TabsTrigger>
+                <TabsTrigger value="blood-panel">Blood Panel</TabsTrigger>
               </TabsList>
               <TabsContent value="blood-pressure">
                 <form onSubmit={handleSubmitBP} className="space-y-4 pt-4">
@@ -104,14 +239,7 @@ export default function VitalsPage() {
                   <Button type="submit" className="w-full" disabled={createBP.isPending}>Save</Button>
                 </form>
               </TabsContent>
-              <TabsContent value="hba1c">
-                <form onSubmit={handleSubmitHba1c} className="space-y-4 pt-4">
-                  <div className="space-y-2"><Label>HbA1c (%)</Label><Input type="number" step="0.1" value={hba1cForm.percentage} onChange={(e) => setHba1cForm({ ...hba1cForm, percentage: Number(e.target.value) })} /></div>
-                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={hba1cForm.reading_date} onChange={(e) => setHba1cForm({ ...hba1cForm, reading_date: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={hba1cForm.notes} onChange={(e) => setHba1cForm({ ...hba1cForm, notes: e.target.value })} /></div>
-                  <Button type="submit" className="w-full" disabled={createHba1c.isPending}>Save</Button>
-                </form>
-              </TabsContent>
+
               <TabsContent value="weight">
                 <form onSubmit={handleSubmitWeight} className="space-y-4 pt-4">
                   <div className="space-y-2"><Label>Weight (kg)</Label><Input type="number" step="0.1" value={weightForm.weight_kg} onChange={(e) => setWeightForm({ ...weightForm, weight_kg: Number(e.target.value) })} /></div>
@@ -120,16 +248,32 @@ export default function VitalsPage() {
                   <Button type="submit" className="w-full" disabled={createWeight.isPending}>Save</Button>
                 </form>
               </TabsContent>
+              <TabsContent value="blood-panel">
+                <form onSubmit={handleSubmitPanel} className="space-y-3 pt-4">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {panelFields.map((f) => (
+                      <div key={f.key} className={f.key === "b_hba1c_if" ? "col-span-2" : ""}>
+                        <Label>{f.label} ({f.unit})</Label>
+                        <Input type="number" step="0.01" min="0" value={panelForm[f.key]} onChange={(e) => setPanelForm({ ...panelForm, [f.key]: e.target.value })} />
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">{f.range}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={panelForm.reading_date} onChange={(e) => setPanelForm({ ...panelForm, reading_date: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Notes</Label><Textarea value={panelForm.notes} onChange={(e) => setPanelForm({ ...panelForm, notes: e.target.value })} rows={2} /></div>
+                  <Button type="submit" className="w-full" disabled={createPanel.isPending}>Save</Button>
+                </form>
+              </TabsContent>
             </Tabs>
           </DialogContent>
         </Dialog>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="blood-pressure">Blood Pressure</TabsTrigger>
-          <TabsTrigger value="hba1c">HbA1c</TabsTrigger>
           <TabsTrigger value="weight">Weight</TabsTrigger>
+          <TabsTrigger value="blood-panel">Blood Panel</TabsTrigger>
         </TabsList>
         <TabsContent value="blood-pressure" className="space-y-3 pt-4">
           {!bpReadings?.length ? (
@@ -141,26 +285,15 @@ export default function VitalsPage() {
                   <p className="font-bold">{r.systolic}/{r.diastolic} <span className="text-sm font-normal text-muted-foreground">mmHg</span></p>
                   <p className="text-xs text-muted-foreground">{r.reading_date}{r.heart_rate && ` | HR: ${r.heart_rate} bpm`}</p>
                 </div>
-                <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("blood_pressure").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-pressure"] }); }}><Trash2 className="h-4 w-4" /></Button>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-        <TabsContent value="hba1c" className="space-y-3 pt-4">
-          {!hba1cReadings?.length ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">No HbA1c readings yet.</CardContent></Card>
-          ) : hba1cReadings.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="flex items-center justify-between py-4">
-                <div>
-                  <p className="font-bold">{r.percentage}%</p>
-                  <p className="text-xs text-muted-foreground">{r.reading_date}</p>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => openEditVitals("bp", r)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("blood_pressure").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-pressure"] }); }}><Trash2 className="h-4 w-4" /></Button>
                 </div>
-                <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("hba1c").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["hba1c"] }); }}><Trash2 className="h-4 w-4" /></Button>
               </CardContent>
             </Card>
           ))}
         </TabsContent>
+
         <TabsContent value="weight" className="space-y-3 pt-4">
           {!weightReadings?.length ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">No weight readings yet.</CardContent></Card>
@@ -171,10 +304,84 @@ export default function VitalsPage() {
                   <p className="font-bold">{r.weight_kg} kg</p>
                   <p className="text-xs text-muted-foreground">{r.reading_date}</p>
                 </div>
-                <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("weight_log").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["weight"] }); }}><Trash2 className="h-4 w-4" /></Button>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => openEditVitals("weight", r)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("weight_log").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["weight"] }); }}><Trash2 className="h-4 w-4" /></Button>
+                </div>
               </CardContent>
             </Card>
           ))}
+        </TabsContent>
+        <TabsContent value="blood-panel" className="pt-4">
+          {!panelReadings?.length ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">No blood panel readings yet.</CardContent></Card>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground">Date</th>
+                    {panelFields.map((f) => (
+                      <th key={f.key} className="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground">
+                        <div>{f.label}</div>
+                        <div className="text-[10px] font-normal">{f.range}</div>
+                      </th>
+                    ))}
+                    <th className="w-16 px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {panelReadings.map((r) => (
+                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">{r.reading_date}</td>
+                      {panelFields.map((f) => {
+                        const val = r[f.key as keyof typeof r] as number | null;
+                        const level = panelLevel(val, f.key);
+                        return (
+                          <td key={f.key} className="whitespace-nowrap px-3 py-3">
+                            {val != null ? (
+                              <span className={cn("font-medium", level ? levelColors[level] : "")}>
+                                {val} <span className="text-xs text-muted-foreground">{f.unit}</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-3">
+                        <div className="flex gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                            onClick={() => {
+                              setEditId(r.id);
+                              setEditType("panel");
+                              setPanelForm({
+                                reading_date: r.reading_date,
+                                s_chol: r.s_chol?.toString() ?? "",
+                                s_tag: r.s_tag?.toString() ?? "",
+                                s_hdl: r.s_hdl?.toString() ?? "",
+                                non_hdl: r.non_hdl?.toString() ?? "",
+                                s_ck: r.s_ck?.toString() ?? "",
+                                b_hba1c_dc: r.b_hba1c_dc?.toString() ?? "",
+                                b_hba1c_if: r.b_hba1c_if?.toString() ?? "",
+                                notes: r.notes ?? "",
+                              });
+                              setEditOpen(true);
+                            }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                            onClick={async () => { await supabase.from("blood_panel").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-panel"] }); }}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

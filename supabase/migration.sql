@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS user_settings (
   reminder_window_end   TIME NOT NULL DEFAULT '22:00',
   app_pin_hash          TEXT,
   app_pin_enabled       BOOLEAN NOT NULL DEFAULT false,
+  full_name             VARCHAR(200),
+  id_card_number        VARCHAR(100),
+  doctor_name           VARCHAR(200),
+  description           TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -45,7 +49,7 @@ CREATE TABLE IF NOT EXISTS medications (
   time_of_day      TEXT[] NOT NULL DEFAULT '{}',
   is_active        BOOLEAN NOT NULL DEFAULT true,
   active_substance VARCHAR(300),
-  product_links    TEXT,
+  stock_count      INTEGER CHECK (stock_count >= 0),
   ai_summary       TEXT,
   deleted_at       TIMESTAMPTZ,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -376,6 +380,61 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW
   EXECUTE FUNCTION handle_new_user();
 
+-- 14. blood_panel
+CREATE TABLE IF NOT EXISTS blood_panel (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  reading_date  DATE NOT NULL,
+  s_chol        NUMERIC(5,2) CHECK (s_chol >= 0),
+  s_tag         NUMERIC(5,2) CHECK (s_tag >= 0),
+  s_hdl         NUMERIC(5,2) CHECK (s_hdl >= 0),
+  non_hdl       NUMERIC(5,2) CHECK (non_hdl >= 0),
+  s_ck          NUMERIC(5,2) CHECK (s_ck >= 0),
+  b_hba1c_dc    NUMERIC(5,2) CHECK (b_hba1c_dc >= 0),
+  b_hba1c_if    NUMERIC(6,2) CHECK (b_hba1c_if >= 0),
+  notes         VARCHAR(1000),
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_blood_panel_user_id   ON blood_panel (user_id);
+CREATE INDEX IF NOT EXISTS idx_blood_panel_user_date ON blood_panel (user_id, reading_date);
+
+ALTER TABLE blood_panel ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_blood_panel_all" ON blood_panel;
+CREATE POLICY "user_blood_panel_all"
+  ON blood_panel
+  FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- 15. appointments
+CREATE TABLE IF NOT EXISTS appointments (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title            VARCHAR(200) NOT NULL,
+  doctor_name      VARCHAR(200),
+  appointment_date DATE NOT NULL,
+  appointment_time TIME,
+  location         VARCHAR(300),
+  notes            TEXT,
+  deleted_at       TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments (user_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_date    ON appointments (user_id, appointment_date) WHERE deleted_at IS NULL;
+
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_appointments_all" ON appointments;
+CREATE POLICY "user_appointments_all"
+  ON appointments
+  FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
 -- Migration: time_of_day from single value to array
 ALTER TABLE medications DROP CONSTRAINT IF EXISTS medications_time_of_day_check;
 ALTER TABLE medications ALTER COLUMN time_of_day TYPE TEXT[] USING ARRAY[time_of_day];
@@ -383,6 +442,12 @@ ALTER TABLE medications ALTER COLUMN time_of_day SET DEFAULT '{}';
 ALTER TABLE medications ALTER COLUMN time_of_day SET NOT NULL;
 DROP INDEX IF EXISTS idx_medications_time_of_day;
 CREATE INDEX IF NOT EXISTS idx_medications_time_of_day ON medications USING GIN (time_of_day);
+
+-- Migration: add optional columns
+ALTER TABLE medications ADD COLUMN IF NOT EXISTS active_substance VARCHAR(300);
+ALTER TABLE medications DROP COLUMN IF EXISTS product_links;
+ALTER TABLE medications ADD COLUMN IF NOT EXISTS stock_count INTEGER CHECK (stock_count >= 0);
+ALTER TABLE medications ADD COLUMN IF NOT EXISTS ai_summary TEXT;
 
 -- Grant table permissions to roles (needed because tables created via SQL Editor)
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;

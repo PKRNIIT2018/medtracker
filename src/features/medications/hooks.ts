@@ -8,7 +8,7 @@ function cleanOptionalFields(values: MedicationFormData) {
   return {
     ...values,
     active_substance: values.active_substance || null,
-    product_links: values.product_links || null,
+    stock_count: values.stock_count ?? null,
     ai_summary: values.ai_summary || null,
   };
 }

@@ -15,7 +15,7 @@ export interface Medication {
   time_of_day: string[]
   is_active: boolean
   active_substance: string | null
-  product_links: string | null
+  stock_count: number | null
   ai_summary: string | null
   created_at: string
   updated_at: string
@@ -99,6 +99,35 @@ export interface QuarterlyResult {
   notes: string | null
   created_at: string
   deleted_at: string | null
+}
+
+export interface BloodPanel {
+  id: string
+  user_id: string
+  reading_date: string
+  s_chol: number | null
+  s_tag: number | null
+  s_hdl: number | null
+  non_hdl: number | null
+  s_ck: number | null
+  b_hba1c_dc: number | null
+  b_hba1c_if: number | null
+  notes: string | null
+  deleted_at: string | null
+  created_at: string
+}
+
+export interface Appointment {
+  id: string
+  user_id: string
+  title: string
+  doctor_name: string | null
+  appointment_date: string
+  appointment_time: string | null
+  location: string | null
+  notes: string | null
+  deleted_at: string | null
+  created_at: string
 }
 
 export interface AuditLog {

@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { buttonVariants } from "@/components/ui/button";
-import { Plus, Pill, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Pill, Pencil, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import type { Medication } from "@/types/database";
 
@@ -44,27 +44,41 @@ export default function MedicationsPage() {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<MedicationFormData>({
-    name: "",
-    type: "tablet",
-    strength: "",
-    time_of_day: ["morning"],
-    is_active: true,
+  interface FormState {
+    name: string; type: "tablet" | "liquid" | "injection";
+    strength: string; time_of_day: string[]; is_active: boolean;
+    active_substance: string; stock_count: string; ai_summary: string;
+  }
+
+  const [form, setForm] = useState<FormState>({
+    name: "", type: "tablet", strength: "",
+    time_of_day: ["morning"], is_active: true,
+    active_substance: "", stock_count: "", ai_summary: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const emptyForm: MedicationFormData = {
+  function toPayload(f: FormState): MedicationFormData {
+    return {
+      name: f.name, type: f.type, strength: f.strength,
+      time_of_day: f.time_of_day as ("morning" | "afternoon" | "evening")[],
+      is_active: f.is_active,
+      active_substance: f.active_substance,
+      stock_count: f.stock_count === "" ? undefined : Number(f.stock_count),
+      ai_summary: f.ai_summary,
+    };
+  }
+
+  const emptyForm: FormState = {
     name: "", type: "tablet", strength: "",
     time_of_day: ["morning"], is_active: true,
+    active_substance: "", stock_count: "", ai_summary: "",
   };
 
   function resetForm() { setForm(emptyForm); setErrors({}); }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setErrors({});
-
-    const result = medicationSchema.safeParse(form);
+  function validate() {
+    const payload = toPayload(form);
+    const result = medicationSchema.safeParse(payload);
     if (!result.success) {
       const fieldErrors = result.error.flatten().fieldErrors;
       setErrors(
@@ -72,10 +86,18 @@ export default function MedicationsPage() {
           Object.entries(fieldErrors).map(([key, val]) => [key, val?.[0] ?? ""])
         )
       );
-      return;
+      return null;
     }
+    return result.data;
+  }
 
-    createMedication.mutate(result.data, {
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrors({});
+    const data = validate();
+    if (!data) return;
+
+    createMedication.mutate(data, {
       onSuccess: () => {
         toast.success("Medication added");
         setOpen(false);
@@ -94,7 +116,7 @@ export default function MedicationsPage() {
       time_of_day: med.time_of_day as ("morning" | "afternoon" | "evening")[],
       is_active: med.is_active,
       active_substance: med.active_substance ?? "",
-      product_links: med.product_links ?? "",
+      stock_count: med.stock_count?.toString() ?? "",
       ai_summary: med.ai_summary ?? "",
     });
     setErrors({});
@@ -104,20 +126,10 @@ export default function MedicationsPage() {
   function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
+    const data = validate();
+    if (!data || !editingId) return;
 
-    const result = medicationSchema.safeParse(form);
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      setErrors(
-        Object.fromEntries(
-          Object.entries(fieldErrors).map(([key, val]) => [key, val?.[0] ?? ""])
-        )
-      );
-      return;
-    }
-
-    if (!editingId) return;
-    updateMedication.mutate({ id: editingId, ...result.data }, {
+    updateMedication.mutate({ id: editingId, ...data }, {
       onSuccess: () => {
         toast.success("Medication updated");
         setEditOpen(false);
@@ -193,8 +205,8 @@ export default function MedicationsPage() {
                 <Input id="active_substance" placeholder="e.g. Metformin" value={form.active_substance ?? ""} onChange={(e) => setForm({ ...form, active_substance: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product_links">Product Links</Label>
-                <Input id="product_links" placeholder="https://..." value={form.product_links ?? ""} onChange={(e) => setForm({ ...form, product_links: e.target.value })} />
+                <Label htmlFor="stock_count">Stock Count</Label>
+                <Input id="stock_count" type="number" min="0" placeholder="0" value={form.stock_count} onChange={(e) => setForm({ ...form, stock_count: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ai_summary">AI Summary</Label>
@@ -262,8 +274,8 @@ export default function MedicationsPage() {
                 <Input id="edit-active_substance" placeholder="e.g. Metformin" value={form.active_substance ?? ""} onChange={(e) => setForm({ ...form, active_substance: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-product_links">Product Links</Label>
-                <Input id="edit-product_links" placeholder="https://..." value={form.product_links ?? ""} onChange={(e) => setForm({ ...form, product_links: e.target.value })} />
+                <Label htmlFor="edit-stock_count">Stock Count</Label>
+                <Input id="edit-stock_count" type="number" min="0" placeholder="0" value={form.stock_count} onChange={(e) => setForm({ ...form, stock_count: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-ai_summary">AI Summary</Label>
@@ -327,11 +339,11 @@ export default function MedicationsPage() {
                     <span className="font-medium">Substance:</span> {med.active_substance}
                   </p>
                 )}
-                {med.product_links && (
-                  <a href={med.product_links} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
-                    <ExternalLink className="h-3 w-3" />
-                    Product Link
-                  </a>
+                {med.stock_count != null && (
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Package className="h-3 w-3" />
+                    Stock: {med.stock_count}
+                  </p>
                 )}
                 {med.ai_summary && (
                   <p className="text-xs text-muted-foreground line-clamp-3">

@@ -7,7 +7,7 @@ export const medicationSchema = z.object({
   time_of_day: z.array(z.enum(["morning", "afternoon", "evening"])).min(1, "Select at least one time"),
   is_active: z.boolean().default(true),
   active_substance: z.string().max(300).optional().or(z.literal("")),
-  product_links: z.string().optional().or(z.literal("")),
+  stock_count: z.number().int().min(0).optional(),
   ai_summary: z.string().optional().or(z.literal("")),
 });
 
