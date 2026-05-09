@@ -53,13 +53,17 @@ export default function SignupPage() {
     setError(null);
     setSocialLoading(provider);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/login` },
     });
     if (error) {
       setError(error.message);
       setSocialLoading(null);
+      return;
+    }
+    if (data?.url) {
+      window.location.href = data.url;
     }
   }
 
