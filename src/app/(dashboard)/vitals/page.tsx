@@ -10,13 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { AddVitalsDialogContent } from "@/components/vitals/AddVitalsDialog";
 
 const dateStr = format(new Date(), "yyyy-MM-dd");
 
@@ -68,7 +71,7 @@ export default function VitalsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editType, setEditType] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
-  const [tab, setTab] = useState("blood-pressure");
+  const [tab, setTab] = useState<"blood-pressure" | "weight" | "blood-panel">("blood-pressure");
 
   const [bpForm, setBpForm] = useState<BloodPressureFormData>({ reading_date: dateStr, reading_time: "", systolic: 120, diastolic: 80, heart_rate: null, notes: "" });
   const [weightForm, setWeightForm] = useState<WeightFormData>({ reading_date: dateStr, weight_kg: 70, notes: "" });
@@ -168,58 +171,25 @@ export default function VitalsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Vitals</h1>
           <p className="text-muted-foreground">Track blood pressure, HbA1c, and weight</p>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setTab("blood-pressure"); } }}>
-          <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Reading</DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Vitals Reading</DialogTitle></DialogHeader>
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="blood-pressure">BP</TabsTrigger>
-                <TabsTrigger value="weight">Weight</TabsTrigger>
-                <TabsTrigger value="blood-panel">Blood Panel</TabsTrigger>
-              </TabsList>
-              <TabsContent value="blood-pressure">
-                <form onSubmit={handleSubmitBP} className="space-y-4 pt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Systolic</Label><Input type="number" value={bpForm.systolic} onChange={(e) => setBpForm({ ...bpForm, systolic: Number(e.target.value) })} /></div>
-                    <div className="space-y-2"><Label>Diastolic</Label><Input type="number" value={bpForm.diastolic} onChange={(e) => setBpForm({ ...bpForm, diastolic: Number(e.target.value) })} /></div>
-                  </div>
-                  <div className="space-y-2"><Label>Heart Rate (optional)</Label><Input type="number" value={bpForm.heart_rate ?? ""} onChange={(e) => setBpForm({ ...bpForm, heart_rate: e.target.value ? Number(e.target.value) : null })} /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Date</Label><Input type="date" value={bpForm.reading_date} onChange={(e) => setBpForm({ ...bpForm, reading_date: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Time</Label><Input type="time" value={bpForm.reading_time} onChange={(e) => setBpForm({ ...bpForm, reading_time: e.target.value })} /></div>
-                  </div>
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={bpForm.notes} onChange={(e) => setBpForm({ ...bpForm, notes: e.target.value })} /></div>
-                  <Button type="submit" className="w-full" disabled={createBP.isPending}>Save</Button>
-                </form>
-              </TabsContent>
-              <TabsContent value="weight">
-                <form onSubmit={handleSubmitWeight} className="space-y-4 pt-4">
-                  <div className="space-y-2"><Label>Weight (kg)</Label><Input type="number" step="0.1" value={weightForm.weight_kg} onChange={(e) => setWeightForm({ ...weightForm, weight_kg: Number(e.target.value) })} /></div>
-                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={weightForm.reading_date} onChange={(e) => setWeightForm({ ...weightForm, reading_date: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={weightForm.notes} onChange={(e) => setWeightForm({ ...weightForm, notes: e.target.value })} /></div>
-                  <Button type="submit" className="w-full" disabled={createWeight.isPending}>Save</Button>
-                </form>
-              </TabsContent>
-              <TabsContent value="blood-panel">
-                <form onSubmit={handleSubmitPanel} className="space-y-3 pt-4">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    {panelFields.map((f) => (
-                      <div key={f.key} className={f.key === "b_hba1c_if" ? "col-span-2" : ""}>
-                        <Label>{f.label} ({f.unit})</Label>
-                        <Input type="number" step="0.01" min="0" value={panelForm[f.key]} onChange={(e) => setPanelForm({ ...panelForm, [f.key]: e.target.value })} />
-                        <p className="mt-0.5 text-xs text-muted-foreground">{f.range}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={panelForm.reading_date} onChange={(e) => setPanelForm({ ...panelForm, reading_date: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={panelForm.notes} onChange={(e) => setPanelForm({ ...panelForm, notes: e.target.value })} rows={2} /></div>
-                  <Button type="submit" className="w-full" disabled={createPanel.isPending}>Save</Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
+<Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setTab("blood-pressure"); } }}>
+  <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Reading</DialogTrigger>
+  <DialogContent>
+    <DialogHeader><DialogTitle>Add Vitals Reading</DialogTitle></DialogHeader>
+    <AddVitalsDialogContent
+      tab={tab}
+      setTab={setTab}
+      bpForm={bpForm}
+      setBpForm={setBpForm}
+      weightForm={weightForm}
+      setWeightForm={setWeightForm}
+      panelForm={panelForm}
+      setPanelForm={setPanelForm}
+      handleSubmitBP={handleSubmitBP}
+      handleSubmitWeight={handleSubmitWeight}
+      handleSubmitPanel={handleSubmitPanel}
+    />
+  </DialogContent>
+</Dialog>
       </div>
 
       <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditId(null); setEditType(null); } }}>
@@ -275,7 +245,7 @@ export default function VitalsPage() {
         </TabsList>
         <TabsContent value="blood-pressure" className="space-y-3 pt-4">
           {!bpReadings?.length ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">No blood pressure readings yet.</CardContent></Card>
+            <Card><CardContent className="py-8 text-center text-muted-foreground">No blood pressure readings yet. Track your systolic and diastolic readings to monitor heart health.</CardContent></Card>
           ) : bpReadings.map((r) => (
             <Card key={r.id}>
               <CardContent className="flex items-center justify-between py-4">
@@ -283,10 +253,24 @@ export default function VitalsPage() {
                   <p className="font-bold">{r.systolic}/{r.diastolic} <span className="text-sm font-normal text-muted-foreground">mmHg</span></p>
                   <p className="text-xs text-muted-foreground">{r.reading_date}{r.heart_rate && ` | HR: ${r.heart_rate} bpm`}</p>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEditVitals("bp", r)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("blood_pressure").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-pressure"] }); }}><Trash2 className="h-4 w-4" /></Button>
-                </div>
+                 <div className="flex gap-1">
+                   <Button variant="ghost" size="icon" aria-label="Edit blood pressure" onClick={() => openEditVitals("bp", r)}><Pencil className="h-4 w-4" /></Button>
+                   <AlertDialog>
+                     <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete blood pressure"><Trash2 className="h-4 w-4" /></Button>} />
+                     <AlertDialogContent>
+                       <AlertDialogHeader>
+                         <AlertDialogTitle>Delete Blood Pressure Reading</AlertDialogTitle>
+                         <AlertDialogDescription>
+                           Are you sure you want to delete this blood pressure reading? This action cannot be undone.
+                         </AlertDialogDescription>
+                       </AlertDialogHeader>
+                       <div className="flex justify-end gap-2">
+                         <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                         <AlertDialogAction render={<Button variant="destructive" onClick={async () => { await supabase.from("blood_pressure").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-pressure"] }); }} />}>Delete</AlertDialogAction>
+                       </div>
+                     </AlertDialogContent>
+                   </AlertDialog>
+                 </div>
               </CardContent>
             </Card>
           ))}
@@ -294,7 +278,7 @@ export default function VitalsPage() {
 
         <TabsContent value="weight" className="space-y-3 pt-4">
           {!weightReadings?.length ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">No weight readings yet.</CardContent></Card>
+            <Card><CardContent className="py-8 text-center text-muted-foreground">No weight readings yet. Log your weight regularly to spot trends and share with your doctor.</CardContent></Card>
           ) : weightReadings.map((r) => (
             <Card key={r.id}>
               <CardContent className="flex items-center justify-between py-4">
@@ -302,54 +286,81 @@ export default function VitalsPage() {
                   <p className="font-bold">{r.weight_kg} kg</p>
                   <p className="text-xs text-muted-foreground">{r.reading_date}</p>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEditVitals("weight", r)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("weight_log").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["weight"] }); }}><Trash2 className="h-4 w-4" /></Button>
-                </div>
+                 <div className="flex gap-1">
+                   <Button variant="ghost" size="icon" aria-label="Edit weight" onClick={() => openEditVitals("weight", r)}><Pencil className="h-4 w-4" /></Button>
+                   <AlertDialog>
+                     <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete weight"><Trash2 className="h-4 w-4" /></Button>} />
+                     <AlertDialogContent>
+                       <AlertDialogHeader>
+                         <AlertDialogTitle>Delete Weight Reading</AlertDialogTitle>
+                         <AlertDialogDescription>
+                           Are you sure you want to delete this weight reading? This action cannot be undone.
+                         </AlertDialogDescription>
+                       </AlertDialogHeader>
+                       <div className="flex justify-end gap-2">
+                         <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                         <AlertDialogAction render={<Button variant="destructive" onClick={async () => { await supabase.from("weight_log").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["weight"] }); }} />}>Delete</AlertDialogAction>
+                       </div>
+                     </AlertDialogContent>
+                   </AlertDialog>
+                 </div>
               </CardContent>
             </Card>
           ))}
         </TabsContent>
         <TabsContent value="blood-panel" className="pt-4">
           {!panelReadings?.length ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">No blood panel readings yet.</CardContent></Card>
+            <Card><CardContent className="py-8 text-center text-muted-foreground">No blood panel readings yet. Add your lab results to track cholesterol, HbA1c, and other markers over time.</CardContent></Card>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground">Date</th>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
                     {panelFields.map((f) => (
-                      <th key={f.key} className="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground">
+                      <TableHead key={f.key} className="whitespace-nowrap">
                         <div>{f.label}</div>
-                        <div className="text-xs font-normal">{f.range}</div>
-                      </th>
+                        <div className="text-xs font-normal text-muted-foreground">{f.range}</div>
+                      </TableHead>
                     ))}
-                    <th className="w-16 px-3 py-2" />
-                  </tr>
-                </thead>
-                <tbody>
+                    <TableHead className="w-16" />
+                  </TableRow>
+                  <TableRow className="bg-muted/30">
+                    <TableCell colSpan={panelFields.length + 2} className="text-xs text-muted-foreground">
+                      <span className="flex items-center gap-3">
+                        <span>▲ <span className="text-red-600 dark:text-red-400">High</span></span>
+                        <span>▼ <span className="text-red-600 dark:text-red-400">Low</span></span>
+                        <span>✓ <span className="text-green-600 dark:text-green-400">Normal</span></span>
+                        <span>⚠ <span className="text-amber-600 dark:text-amber-400">Borderline</span></span>
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {panelReadings.map((r) => (
-                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">{r.reading_date}</td>
+                    <TableRow key={r.id}>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{r.reading_date}</TableCell>
                       {panelFields.map((f) => {
                         const val = r[f.key as keyof typeof r] as number | null;
                         const level = panelLevel(val, f.key);
+                        const statusIcons: Record<string, string> = { low: "▼", normal: "✓", borderline: "⚠", high: "▲" };
+                        const statusLabels: Record<string, string> = { low: "Low", normal: "Normal", borderline: "Borderline", high: "High" };
                         return (
-                          <td key={f.key} className="whitespace-nowrap px-3 py-3">
+                          <TableCell key={f.key} className="whitespace-nowrap">
                             {val != null ? (
-                              <span className={cn("font-medium", level ? levelColors[level] : "")}>
+                              <span className={cn("font-medium", level ? levelColors[level] : "")} title={level ? `${f.label}: ${val} ${f.unit} — ${statusLabels[level]}` : undefined} aria-label={level ? `${f.label}: ${val} ${f.unit} — ${statusLabels[level]}` : undefined}>
+                                {level && <span aria-hidden="true">{statusIcons[level]} </span>}
                                 {val} <span className="text-xs text-muted-foreground">{f.unit}</span>
                               </span>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
-                          </td>
+                          </TableCell>
                         );
                       })}
-                      <td className="px-3 py-3">
+                      <TableCell className="whitespace-nowrap">
                         <div className="flex gap-0.5">
-                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit blood panel"
                             onClick={() => {
                               setEditId(r.id);
                               setEditType("panel");
@@ -368,16 +379,27 @@ export default function VitalsPage() {
                             }}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7"
-                            onClick={async () => { await supabase.from("blood_panel").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-panel"] }); }}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete blood panel"><Trash2 className="h-3.5 w-3.5" /></Button>} />
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Blood Panel Reading</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this blood panel reading? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <div className="flex justify-end gap-2">
+                                <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction render={<Button variant="destructive" onClick={async () => { await supabase.from("blood_panel").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-panel"] }); }} />}>Delete</AlertDialogAction>
+                              </div>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </TabsContent>

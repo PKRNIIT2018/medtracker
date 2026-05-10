@@ -108,3 +108,79 @@ export function useDeleteMedication() {
     },
   });
 }
+
+function todayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function useTodayIntake() {
+  return useQuery({
+    queryKey: ["medication-intake", todayDate()],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("medication_intake")
+        .select("*, medications!inner(name, strength, type, time_of_day)")
+        .eq("taken_date", todayDate())
+        .is("deleted_at", null);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useLogIntake() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      medication_id,
+      status,
+      notes,
+    }: {
+      medication_id: string;
+      status: "taken" | "skipped";
+      notes?: string;
+    }) => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error("Not authenticated");
+
+      const td = todayDate();
+      const now = new Date().toISOString().slice(11, 16);
+
+      const payload = {
+        user_id: user.user.id,
+        medication_id,
+        taken_date: td,
+        taken_time: now,
+        status,
+        notes: notes ?? null,
+      };
+
+      const { data: existing } = await supabase
+        .from("medication_intake")
+        .select("id")
+        .eq("medication_id", medication_id)
+        .eq("taken_date", td)
+        .eq("notes", notes ?? "__NULL__")
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("medication_intake")
+          .update(payload)
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("medication_intake")
+          .insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["medication-intake"] });
+    },
+  });
+}

@@ -1,54 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { useQuarterlyResults, useCreateQuarterlyResult, useDeleteQuarterlyResult } from "@/features/quarterly-results/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, FlaskConical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-const supabase = createClient();
-
 export default function QuarterlyResultsPage() {
-  const qc = useQueryClient();
-  const { data: results, isLoading } = useQuery({
-    queryKey: ["quarterly-results"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("quarterly_results")
-        .select("*, quarterly_result_metrics(*)")
-        .is("deleted_at", null)
-        .order("result_date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const createResult = useMutation({
-    mutationFn: async (values: { result_date: string; quarter_label: string; notes?: string }) => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error("Not authenticated");
-      const { data, error } = await supabase.from("quarterly_results").insert({ ...values, user_id: user.user.id }).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["quarterly-results"] }); toast.success("Result batch added"); setOpen(false); },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const deleteResult = useMutation({
-    mutationFn: async (id: string) => {
-      await supabase.from("quarterly_results").update({ deleted_at: new Date().toISOString() }).eq("id", id);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["quarterly-results"] }),
-  });
+  const { data: results, isLoading } = useQuarterlyResults();
+  const createResult = useCreateQuarterlyResult();
+  const deleteResult = useDeleteQuarterlyResult();
 
   const [open, setOpen] = useState(false);
   const [quarterLabel, setQuarterLabel] = useState("");
@@ -57,15 +26,17 @@ export default function QuarterlyResultsPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    createResult.mutate({ quarter_label: quarterLabel, result_date: resultDate, notes: notes || undefined });
-    setQuarterLabel(""); setResultDate(""); setNotes("");
+    createResult.mutate({ quarter_label: quarterLabel, result_date: resultDate, notes: notes || undefined }, {
+      onSuccess: () => { toast.success("Result batch added"); setOpen(false); setQuarterLabel(""); setResultDate(""); setNotes(""); },
+      onError: (err) => toast.error(err.message),
+    });
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-3xl font-bold tracking-tight">Quarterly Results</h1><p className="text-muted-foreground">Lab test results organized by quarter</p></div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setQuarterLabel(""); setResultDate(""); setNotes(""); } }}>
           <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Batch</DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Quarterly Result Batch</DialogTitle></DialogHeader>
@@ -82,7 +53,8 @@ export default function QuarterlyResultsPage() {
       {isLoading ? <p className="text-muted-foreground">Loading...</p> : !results?.length ? (
         <Card><CardContent className="flex flex-col items-center gap-4 py-12">
           <FlaskConical className="h-12 w-12 text-muted-foreground" />
-          <p className="text-muted-foreground">No quarterly results yet.</p>
+          <p className="text-muted-foreground">No quarterly lab results yet. Add your bloodwork to track trends over time and share with your doctor.</p>
+          <Button variant="outline" onClick={() => setOpen(true)}>Add your first batch</Button>
         </CardContent></Card>
       ) : (
         <div className="space-y-6">
@@ -94,7 +66,21 @@ export default function QuarterlyResultsPage() {
                     <CardTitle>{r.quarter_label}</CardTitle>
                     <p className="text-sm text-muted-foreground">{r.result_date}</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => deleteResult.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete batch"><Trash2 className="h-4 w-4" /></Button>} />
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this quarterly results batch? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="flex justify-end gap-2">
+                        <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteResult.mutate(r.id)} />}>Delete</AlertDialogAction>
+                      </div>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </CardHeader>
               <CardContent>

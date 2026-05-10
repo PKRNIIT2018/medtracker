@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers";
@@ -17,6 +17,25 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MedTracker",
   description: "Multi-user health tracking application",
+  manifest: "/manifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MedTracker",
+  },
+  icons: {
+    apple: "/icons/apple-icon.svg",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0d6e5e",
 };
 
 export default function RootLayout({

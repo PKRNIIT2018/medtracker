@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "shadcn-ui": {
+      "command": "node",
+      "args": ["${PROJECT_ROOT}/node_modules/shadcn-ui-mcp-server/build/index.js"],
+      "env": {
+        "SHADCN_UI_REGISTRY_URL": "https://ui.shadcn.com/r"
+      }
+    },
+    "nextjs-devtools": {
+      "command": "npx",
+      "args": ["next-devtools-mcp"]
+    }
+  }
+}

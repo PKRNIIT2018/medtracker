@@ -22,12 +22,27 @@ export interface Medication {
   deleted_at: string | null
 }
 
+export interface MedicationDose {
+  id: string
+  user_id: string
+  medication_id: string
+  dose_time: string
+  amount: string
+  deleted_at: string | null
+  created_at: string
+}
+
 export interface MedicationIntake {
   id: string
   user_id: string
   medication_id: string
-  taken_at: string
-  date: string
+  dose_id: string | null
+  taken_date: string
+  taken_time: string | null
+  status: "taken" | "skipped" | "rescheduled"
+  notes: string | null
+  deleted_at: string | null
+  created_at: string
 }
 
 export interface BloodSugar {

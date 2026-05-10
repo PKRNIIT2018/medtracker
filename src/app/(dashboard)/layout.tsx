@@ -18,8 +18,10 @@ import {
   Menu,
   X,
   FlaskConical,
+  Lock,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { PinGate, isPinVerified, clearPinSession, refreshPinSession } from "@/components/pin-gate";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -43,11 +45,83 @@ export default function DashboardLayout({
   const router = useRouter();
   const supabase = createClient();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pinEnabled, setPinEnabled] = useState(false);
+  const [showPinGate, setShowPinGate] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function checkPinStatus() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: settings } = await supabase
+          .from("user_settings")
+          .select("app_pin_enabled")
+          .eq("user_id", user.id)
+          .single();
+
+        const enabled = settings?.app_pin_enabled ?? false;
+        setPinEnabled(enabled);
+
+        if (enabled && !isPinVerified()) {
+          setShowPinGate(true);
+        }
+      }
+      setIsLoading(false);
+    }
+    checkPinStatus();
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!pinEnabled) return;
+
+    const handleActivity = () => {
+      if (isPinVerified()) {
+        refreshPinSession();
+      }
+    };
+
+    window.addEventListener("click", handleActivity);
+    window.addEventListener("keydown", handleActivity);
+
+    const interval = setInterval(() => {
+      if (pinEnabled && !isPinVerified()) {
+        setShowPinGate(true);
+      }
+    }, 60000);
+
+    return () => {
+      window.removeEventListener("click", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      clearInterval(interval);
+    };
+  }, [pinEnabled]);
+
+  function handleUnlock() {
+    setShowPinGate(false);
+  }
+
+  function handleLock() {
+    clearPinSession();
+    setShowPinGate(true);
+  }
 
   async function handleLogout() {
+    clearPinSession();
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  if (showPinGate && pinEnabled) {
+    return <PinGate onUnlock={handleUnlock} />;
   }
 
   return (
@@ -75,6 +149,7 @@ export default function DashboardLayout({
             variant="ghost"
             size="icon"
             className="lg:hidden"
+            aria-label="Close sidebar"
             onClick={() => setMobileOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -98,7 +173,17 @@ export default function DashboardLayout({
             </Link>
           ))}
         </nav>
-        <div className="border-t p-3">
+        <div className="border-t p-3 space-y-1">
+          {pinEnabled && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground"
+              onClick={handleLock}
+            >
+              <Lock className="h-4 w-4" />
+              Lock App
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 text-muted-foreground"
@@ -117,6 +202,7 @@ export default function DashboardLayout({
             variant="ghost"
             size="icon"
             className="lg:hidden"
+            aria-label="Open sidebar"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="h-5 w-5" />

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Activity, Trash2 } from "lucide-react";
@@ -64,7 +65,7 @@ export default function BloodSugarPage() {
           <h1 className="text-3xl font-bold tracking-tight">Blood Sugar</h1>
           <p className="text-muted-foreground">Track your blood sugar readings</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm({ reading_date: format(new Date(), "yyyy-MM-dd"), reading_time: format(new Date(), "HH:mm"), meal_slot: "before_breakfast", level_mgdl: 0, notes: "" }); }}>
           <DialogTrigger className={buttonVariants({ variant: "default" })}>
             <Plus className="mr-2 h-4 w-4" />Add Reading
           </DialogTrigger>
@@ -136,9 +137,21 @@ export default function BloodSugarPage() {
                     {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteReading.mutate(r.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                 <AlertDialog>
+                   <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
+                   <AlertDialogContent>
+                     <AlertDialogHeader>
+                       <AlertDialogTitle>Delete Reading</AlertDialogTitle>
+                       <AlertDialogDescription>
+                         Are you sure you want to delete this blood sugar reading? This action cannot be undone.
+                       </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <div className="flex justify-end gap-2">
+                       <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                       <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
+                     </div>
+                   </AlertDialogContent>
+                 </AlertDialog>
               </CardContent>
             </Card>
           ))}

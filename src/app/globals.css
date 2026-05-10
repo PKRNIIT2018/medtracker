@@ -50,6 +50,23 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
   --shadow-card-hover: 0 4px 12px 0 rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --color-brand: var(--primary);
+  --color-danger: var(--destructive);
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-stagger-item: stagger-item 0.3s ease-out both;
+  --animate-scale-in: scale-in 0.15s ease-out;
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes stagger-item {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
 }
 
 :root {
@@ -123,16 +140,25 @@
   --sidebar-accent-foreground: oklch(0.85 0.04 165);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.65 0.12 165 / 0.4);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-card-hover: 0 4px 12px 0 oklch(0.65 0.12 165 / 0.15), 0 2px 4px -2px rgb(0 0 0 / 0.3);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-200;
   }
   html {
     @apply font-sans;
+  }
+  button,
+  a {
+    @apply transition-colors duration-150;
   }
 }

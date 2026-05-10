@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { useMedicalHistory, useCreateMedicalEntry, useDeleteMedicalEntry } from "@/features/medical-history/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,44 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Plus, ClipboardList, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-
-const supabase = createClient();
 
 const categoryLabels: Record<string, string> = { condition: "Condition", surgery: "Surgery", allergy: "Allergy" };
 const categoryColors: Record<string, "default" | "secondary" | "destructive"> = { condition: "default", surgery: "secondary", allergy: "destructive" };
 
 export default function MedicalHistoryPage() {
-  const qc = useQueryClient();
-  const { data: entries, isLoading } = useQuery({
-    queryKey: ["medical-history"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("medical_history").select("*").is("deleted_at", null).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const createEntry = useMutation({
-    mutationFn: async (values: { category: string; title: string; description?: string; event_date?: string }) => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error("Not authenticated");
-      const { data, error } = await supabase.from("medical_history").insert({ ...values, user_id: user.user.id }).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["medical-history"] }); toast.success("Entry added"); setOpen(false); },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const deleteEntry = useMutation({
-    mutationFn: async (id: string) => {
-      await supabase.from("medical_history").update({ deleted_at: new Date().toISOString() }).eq("id", id);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["medical-history"] }),
-  });
+  const { data: entries, isLoading } = useMedicalHistory();
+  const createEntry = useCreateMedicalEntry();
+  const deleteEntry = useDeleteMedicalEntry();
 
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState("condition");
@@ -58,15 +31,17 @@ export default function MedicalHistoryPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    createEntry.mutate({ category, title, description: description || undefined, event_date: eventDate || undefined });
-    setTitle(""); setDescription(""); setEventDate("");
+    createEntry.mutate({ category, title, description: description || undefined, event_date: eventDate || undefined }, {
+      onSuccess: () => { toast.success("Entry added"); setOpen(false); setTitle(""); setDescription(""); setEventDate(""); },
+      onError: (err) => toast.error(err.message),
+    });
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-3xl font-bold tracking-tight">Medical History</h1><p className="text-muted-foreground">Track conditions, surgeries, and allergies</p></div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setCategory("condition"); setTitle(""); setDescription(""); setEventDate(""); } }}>
           <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Entry</DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Medical Entry</DialogTitle></DialogHeader>
@@ -91,7 +66,8 @@ export default function MedicalHistoryPage() {
       {isLoading ? <p className="text-muted-foreground">Loading...</p> : !entries?.length ? (
         <Card><CardContent className="flex flex-col items-center gap-4 py-12">
           <ClipboardList className="h-12 w-12 text-muted-foreground" />
-          <p className="text-muted-foreground">No medical history entries yet.</p>
+          <p className="text-muted-foreground">No conditions, surgeries, or allergies recorded yet. Track your medical history to stay informed during doctor visits.</p>
+          <Button variant="outline" onClick={() => setOpen(true)}>Add your first entry</Button>
         </CardContent></Card>
       ) : (
         <div className="space-y-3">
@@ -105,7 +81,21 @@ export default function MedicalHistoryPage() {
                     <p className="text-xs text-muted-foreground">{e.event_date}{e.description && ` — ${e.description}`}</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(e.id)}><Trash2 className="h-4 w-4" /></Button>
+                 <AlertDialog>
+                   <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete entry"><Trash2 className="h-4 w-4" /></Button>} />
+                   <AlertDialogContent>
+                     <AlertDialogHeader>
+                       <AlertDialogTitle>Delete Entry</AlertDialogTitle>
+                       <AlertDialogDescription>
+                         Are you sure you want to delete this medical history entry? This action cannot be undone.
+                       </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <div className="flex justify-end gap-2">
+                       <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                       <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteEntry.mutate(e.id)} />}>Delete</AlertDialogAction>
+                     </div>
+                   </AlertDialogContent>
+                 </AlertDialog>
               </CardContent>
             </Card>
           ))}

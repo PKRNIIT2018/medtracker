@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useWaterEntries, useAddWater } from "@/features/water/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { buttonVariants } from "@/components/ui/button";
 import { Droplets, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -15,6 +18,8 @@ export default function WaterPage() {
   const { data: entries, isLoading } = useWaterEntries();
   const addWater = useAddWater();
   const [customAmount, setCustomAmount] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAmount, setDialogAmount] = useState("");
 
   const todayTotal = entries
     ?.filter((e) => e.entry_date === format(new Date(), "yyyy-MM-dd"))
@@ -30,11 +35,38 @@ export default function WaterPage() {
     });
   }
 
+  function handleDialogSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const n = Number(dialogAmount);
+    if (n > 0) {
+      handleAdd(n);
+      setDialogAmount("");
+      setDialogOpen(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Water Intake</h1>
-        <p className="text-muted-foreground">Track your daily water consumption</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Water Intake</h1>
+          <p className="text-muted-foreground">Track your daily water consumption</p>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger className={buttonVariants({ variant: "default" })}>
+            <Plus className="mr-2 h-4 w-4" />Add Water
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Add Water</DialogTitle></DialogHeader>
+            <form onSubmit={handleDialogSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (ml)</Label>
+                <Input id="amount" type="number" min="1" placeholder="e.g. 250" value={dialogAmount} onChange={(e) => setDialogAmount(e.target.value)} required />
+              </div>
+              <Button type="submit" className="w-full" disabled={addWater.isPending}>Add</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -75,7 +107,7 @@ export default function WaterPage() {
         <CardHeader><CardTitle>Recent Entries</CardTitle></CardHeader>
         <CardContent>
           {!entries?.length ? (
-            <p className="text-sm text-muted-foreground">No entries yet.</p>
+            <p className="text-sm text-muted-foreground">No entries yet. Use the quick-add buttons above to log your water intake throughout the day.</p>
           ) : (
             <div className="space-y-2">
               {entries.slice(0, 20).map((e) => (

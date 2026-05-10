@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useMedications, useCreateMedication, useUpdateMedication, useToggleMedication, useDeleteMedication } from "@/features/medications/hooks";
+import { useMedications, useCreateMedication, useUpdateMedication, useToggleMedication, useDeleteMedication, useTodayIntake, useLogIntake } from "@/features/medications/hooks";
 import { medicationSchema, type MedicationFormData } from "@/features/medications/schema";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { buttonVariants } from "@/components/ui/button";
-import { Plus, Pill, Pencil, Trash2, Package } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Plus, Pill, Pencil, Trash2, Package, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import type { Medication } from "@/types/database";
 
@@ -41,6 +41,8 @@ export default function MedicationsPage() {
   const updateMedication = useUpdateMedication();
   const toggleMedication = useToggleMedication();
   const deleteMedication = useDeleteMedication();
+  const { data: todayIntake } = useTodayIntake();
+  const logIntake = useLogIntake();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -147,7 +149,7 @@ export default function MedicationsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Medications</h1>
           <p className="text-muted-foreground">Manage your medications</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger className={buttonVariants({ variant: "default" })}>
             <Plus className="mr-2 h-4 w-4" />
             Add Medication
@@ -289,6 +291,76 @@ export default function MedicationsPage() {
         </Dialog>
       </div>
 
+      {/* Today's Log */}
+      {!isLoading && medications && medications.some((m) => m.is_active) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Today's Log</CardTitle>
+              <span className="text-sm text-muted-foreground">
+                {(() => {
+                  const totalSlots = medications
+                    .filter((m) => m.is_active)
+                    .reduce((sum, m) => sum + m.time_of_day.length, 0);
+                  const done = todayIntake?.filter((i) => i.status === "taken").length ?? 0;
+                  return `${done} of ${totalSlots} taken`;
+                })()}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {medications
+              .filter((m) => m.is_active)
+              .map((med) => (
+                <div
+                  key={med.id}
+                  className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-muted/50 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{med.name}</p>
+                    <p className="text-xs text-muted-foreground">{med.strength}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {med.time_of_day.map((slot: string) => {
+                      const entry = todayIntake?.find(
+                        (i) => i.medication_id === med.id && i.notes === slot
+                      );
+                      const isTaken = entry?.status === "taken";
+                      const isSkipped = entry?.status === "skipped";
+
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          disabled={logIntake.isPending}
+                          onClick={() =>
+                            logIntake.mutate({
+                              medication_id: med.id,
+                              status: isTaken ? "skipped" : "taken",
+                              notes: slot,
+                            })
+                          }
+                          className={`
+                            inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors
+                            ${isTaken ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}
+                            ${isSkipped ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" : ""}
+                            ${!isTaken && !isSkipped ? "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary" : ""}
+                          `}
+                        >
+                          <span>{timeOfDayLabels[slot]}</span>
+                          {isTaken && <Check className="h-3 w-3" />}
+                          {isSkipped && <X className="h-3 w-3" />}
+                          {!isTaken && !isSkipped && <Plus className="h-3 w-3" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
       ) : !medications?.length ? (
@@ -310,12 +382,24 @@ export default function MedicationsPage() {
                     <p className="text-sm text-muted-foreground">{med.strength} — {typeLabels[med.type]}</p>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(med)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit medication" onClick={() => openEdit(med)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteMedication.mutate(med.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete medication"><Trash2 className="h-4 w-4" /></Button>} />
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Medication</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{med.name}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="flex justify-end gap-2">
+                          <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteMedication.mutate(med.id)} />}>Delete</AlertDialogAction>
+                        </div>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardHeader>

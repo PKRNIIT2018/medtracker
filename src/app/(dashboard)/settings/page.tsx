@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "next-themes";
@@ -12,12 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { buttonVariants } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Sun, Moon, Monitor, Shield, Plus, Trash2, Calendar } from "lucide-react";
+import { Sun, Moon, Monitor, Plus, Trash2, Calendar, Lock, Check } from "lucide-react";
 import bcrypt from "bcryptjs";
 import { format } from "date-fns";
+import { MfaEnrollment } from "@/components/mfa-enrollment";
+import { MfaManagement } from "@/components/mfa-management";
 
 const supabase = createClient();
 
@@ -27,8 +30,12 @@ export default function SettingsPage() {
   const [pinCode, setPinCode] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
   const [currentPin, setCurrentPin] = useState("");
+  const [isChangingPin, setIsChangingPin] = useState(false);
+  const [pinChangeStep, setPinChangeStep] = useState<"verify" | "set">("verify");
+  const [pinVerifyError, setPinVerifyError] = useState("");
   const [apptOpen, setApptOpen] = useState(false);
   const [apptForm, setApptForm] = useState({ title: "", doctor_name: "", appointment_date: format(new Date(), "yyyy-MM-dd"), appointment_time: "", location: "", notes: "" });
+  const [mfaKey, setMfaKey] = useState(0);
 
   const { data: settings } = useQuery({
     queryKey: ["user-settings"],
@@ -89,6 +96,66 @@ export default function SettingsPage() {
     updateSettings.mutate({ app_pin_hash: null, app_pin_enabled: false });
   }
 
+  async function handleVerifyCurrentPin() {
+    if (!currentPin || currentPin.length !== 4) {
+      setPinVerifyError("Enter your current 4-digit PIN");
+      return;
+    }
+
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("app_pin_hash")
+      .single();
+
+    if (!settings?.app_pin_hash) {
+      setIsChangingPin(false);
+      return;
+    }
+
+    const isValid = await bcrypt.compare(currentPin, settings.app_pin_hash);
+    if (isValid) {
+      setPinChangeStep("set");
+      setPinVerifyError("");
+    } else {
+      setPinVerifyError("Incorrect PIN");
+      setCurrentPin("");
+    }
+  }
+
+  async function handleChangePin() {
+    if (pinCode.length !== 4 || pinCode !== pinConfirm) {
+      toast.error("PIN must be 4 digits and match confirmation");
+      return;
+    }
+
+    const hash = await bcrypt.hash(pinCode, 10);
+    updateSettings.mutate({ app_pin_hash: hash, app_pin_enabled: true });
+    setPinCode("");
+    setPinConfirm("");
+    setCurrentPin("");
+    setIsChangingPin(false);
+    setPinChangeStep("verify");
+    toast.success("PIN changed successfully");
+  }
+
+  function startChangePin() {
+    setIsChangingPin(true);
+    setPinChangeStep("verify");
+    setPinVerifyError("");
+    setCurrentPin("");
+    setPinCode("");
+    setPinConfirm("");
+  }
+
+  function cancelChangePin() {
+    setIsChangingPin(false);
+    setPinChangeStep("verify");
+    setPinVerifyError("");
+    setCurrentPin("");
+    setPinCode("");
+    setPinConfirm("");
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -138,7 +205,7 @@ export default function SettingsPage() {
               <h2 className="text-xl font-semibold">Doctor Appointments</h2>
               <p className="text-sm text-muted-foreground">Schedule and track your visits</p>
             </div>
-            <Dialog open={apptOpen} onOpenChange={setApptOpen}>
+            <Dialog open={apptOpen} onOpenChange={(v) => { setApptOpen(v); if (!v) setApptForm({ title: "", doctor_name: "", appointment_date: format(new Date(), "yyyy-MM-dd"), appointment_time: "", location: "", notes: "" }); }}>
               <DialogTrigger className={buttonVariants({ variant: "default" })}>
                 <Plus className="mr-2 h-4 w-4" />Add Appointment
               </DialogTrigger>
@@ -160,7 +227,7 @@ export default function SettingsPage() {
           </div>
 
           {!appointments?.length ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">No appointments scheduled.</CardContent></Card>
+            <Card><CardContent className="py-8 text-center text-muted-foreground">No appointments scheduled. Add your upcoming doctor visits to stay organized.</CardContent></Card>
           ) : (
             <div className="space-y-3">
               {appointments.map((a) => (
@@ -175,7 +242,21 @@ export default function SettingsPage() {
                       </div>
                       {a.notes && <p className="text-xs text-muted-foreground pt-1">{a.notes}</p>}
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => deleteAppointment.mutate(a.id)}><Trash2 className="h-4 w-4" /></Button>
+                     <AlertDialog>
+                       <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete appointment"><Trash2 className="h-4 w-4" /></Button>} />
+                       <AlertDialogContent>
+                         <AlertDialogHeader>
+                           <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
+                           <AlertDialogDescription>
+                             Are you sure you want to delete this appointment? This action cannot be undone.
+                           </AlertDialogDescription>
+                         </AlertDialogHeader>
+                         <div className="flex justify-end gap-2">
+                           <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                           <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteAppointment.mutate(a.id)} />}>Delete</AlertDialogAction>
+                         </div>
+                       </AlertDialogContent>
+                     </AlertDialog>
                   </CardContent>
                 </Card>
               ))}
@@ -256,18 +337,120 @@ export default function SettingsPage() {
 
         <TabsContent value="security" className="space-y-6 pt-4">
           <Card>
-            <CardHeader><CardTitle>App PIN</CardTitle><CardDescription>Set a 4-digit PIN for quick access</CardDescription></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                App PIN
+              </CardTitle>
+              <CardDescription>Set a 4-digit PIN for quick access to the app</CardDescription>
+            </CardHeader>
             <CardContent className="space-y-4">
-              {settings?.app_pin_enabled ? (
+              {isChangingPin ? (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">PIN is currently enabled.</p>
-                  <Button variant="destructive" onClick={handleDisablePin}>Disable PIN</Button>
+                  {pinChangeStep === "verify" ? (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">Enter your current PIN to continue</p>
+                      <div className="space-y-2">
+                        <Label>Current PIN</Label>
+                        <Input
+                          type="password"
+                          maxLength={4}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={currentPin}
+                          onChange={(e) => {
+                            setCurrentPin(e.target.value.replace(/\D/g, ""));
+                            setPinVerifyError("");
+                          }}
+                          placeholder="Enter current PIN"
+                          className="text-center tracking-[0.5em] font-mono"
+                        />
+                      </div>
+                      {pinVerifyError && (
+                        <p className="text-sm text-destructive">{pinVerifyError}</p>
+                      )}
+                      <div className="flex gap-2">
+                        <Button onClick={handleVerifyCurrentPin}>Verify</Button>
+                        <Button variant="outline" onClick={cancelChangePin}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">Enter your new PIN</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>New PIN</Label>
+                          <Input
+                            type="password"
+                            maxLength={4}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={pinCode}
+                            onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))}
+                            placeholder="4 digits"
+                            className="text-center tracking-[0.5em] font-mono"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Confirm PIN</Label>
+                          <Input
+                            type="password"
+                            maxLength={4}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={pinConfirm}
+                            onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ""))}
+                            placeholder="4 digits"
+                            className="text-center tracking-[0.5em] font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleChangePin}>Change PIN</Button>
+                        <Button variant="outline" onClick={cancelChangePin}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : settings?.app_pin_enabled ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Check className="h-5 w-5" />
+                    <span className="font-medium">PIN is enabled</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={startChangePin}>Change PIN</Button>
+                    <Button variant="destructive" onClick={handleDisablePin}>Disable PIN</Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">PIN is not set. Set a PIN to add an extra layer of security.</p>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>PIN Code</Label><Input type="password" maxLength={4} inputMode="numeric" pattern="[0-9]*" value={pinCode} onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))} /></div>
-                    <div className="space-y-2"><Label>Confirm PIN</Label><Input type="password" maxLength={4} inputMode="numeric" pattern="[0-9]*" value={pinConfirm} onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ""))} /></div>
+                    <div className="space-y-2">
+                      <Label>PIN Code</Label>
+                      <Input
+                        type="password"
+                        maxLength={4}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={pinCode}
+                        onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="4 digits"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Confirm PIN</Label>
+                      <Input
+                        type="password"
+                        maxLength={4}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={pinConfirm}
+                        onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ""))}
+                        placeholder="4 digits"
+                      />
+                    </div>
                   </div>
                   <Button onClick={handleSetPin}>Set PIN</Button>
                 </div>
@@ -275,26 +458,12 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle>Passkeys & MFA</CardTitle><CardDescription>Biometric and multi-factor authentication</CardDescription></CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Passkeys and TOTP MFA are managed through Supabase. Use your browser's
-                passkey registration or an authenticator app for MFA.
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={async () => {
-                  try {
-                    const { error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
-                    if (error) toast.error(error.message);
-                    else toast.success("MFA enrollment started — check your authenticator app");
-                  } catch { toast.error("MFA not available"); }
-                }}>
-                  <Shield className="mr-2 h-4 w-4" />Enroll MFA
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <MfaEnrollment key={mfaKey} onEnrolled={() => setMfaKey(k => k + 1)} />
+          <MfaManagement
+            key={mfaKey + 1}
+            onUnenrolled={() => setMfaKey(k => k + 1)}
+            onAddNew={() => setMfaKey(k => k + 1)}
+          />
         </TabsContent>
       </Tabs>
     </div>
