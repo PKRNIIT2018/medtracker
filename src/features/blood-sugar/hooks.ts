@@ -35,7 +35,7 @@ export function useCreateBloodSugar() {
 
       const { data, error } = await supabase
         .from("blood_sugar")
-        .insert({ ...values, user_id: user.user.id })
+        .insert({ ...values, reading_time: values.reading_time || null, user_id: user.user.id })
         .select()
         .single();
 
@@ -55,7 +55,7 @@ export function useUpdateBloodSugar() {
     mutationFn: async ({ id, ...values }: BloodSugarFormData & { id: string }) => {
       const { error } = await supabase
         .from("blood_sugar")
-        .update(values)
+        .update({ ...values, reading_time: values.reading_time || null })
         .eq("id", id);
 
       if (error) throw error;

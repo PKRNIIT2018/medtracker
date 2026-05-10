@@ -3,11 +3,8 @@
 import { useState } from "react";
 import { useBloodSugarReadings, useCreateBloodSugar, useUpdateBloodSugar, useDeleteBloodSugar } from "@/features/blood-sugar/hooks";
 import { bloodSugarSchema, type BloodSugarFormData, mealSlotLabels } from "@/features/blood-sugar/schema";
+import { BloodSugarForm } from "@/features/blood-sugar/components/BloodSugarForm";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -15,7 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Activity, Pencil, Trash2, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
 import type { BloodSugar } from "@/types/database";
@@ -28,6 +25,11 @@ const MEAL_SLOT_ORDER: string[] = [
   "before_dinner",
   "after_dinner",
 ];
+
+function toastError(err: unknown) {
+  console.error(err);
+  toast.error("Something went wrong. Please try again.");
+}
 
 export default function BloodSugarPage() {
   const { data: readings, isLoading, error, refetch } = useBloodSugarReadings();
@@ -56,42 +58,39 @@ export default function BloodSugarPage() {
     });
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setErrors({});
-
+  function validate() {
     const result = bloodSugarSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors = result.error.flatten().fieldErrors;
       setErrors(Object.fromEntries(Object.entries(fieldErrors).map(([k, v]) => [k, v?.[0] ?? ""])));
-      return;
+      return null;
     }
+    setErrors({});
+    return result.data;
+  }
 
-    createReading.mutate(result.data, {
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const data = validate();
+    if (!data) return;
+
+    createReading.mutate(data, {
       onSuccess: () => {
         toast.success("Reading added");
         setOpen(false);
         resetForm();
       },
-      onError: (err) => toast.error(err.message),
+      onError: toastError,
     });
   }
 
   function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErrors({});
-
-    const result = bloodSugarSchema.safeParse(form);
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      setErrors(Object.fromEntries(Object.entries(fieldErrors).map(([k, v]) => [k, v?.[0] ?? ""])));
-      return;
-    }
-
-    if (!editingId) return;
+    const data = validate();
+    if (!data || !editingId) return;
 
     updateReading.mutate(
-      { id: editingId, ...result.data },
+      { id: editingId, ...data },
       {
         onSuccess: () => {
           toast.success("Reading updated");
@@ -99,17 +98,17 @@ export default function BloodSugarPage() {
           setEditingId(null);
           resetForm();
         },
-        onError: (err) => toast.error(err.message),
+        onError: toastError,
       },
     );
   }
 
-  function openEdit(r: { id: string; reading_date: string; reading_time: string | null; meal_slot: string; level_mgdl: number; notes: string | null }) {
+  function openEdit(r: BloodSugar) {
     setEditingId(r.id);
     setForm({
       reading_date: r.reading_date,
       reading_time: r.reading_time ?? "",
-      meal_slot: r.meal_slot as BloodSugarFormData["meal_slot"],
+      meal_slot: r.meal_slot,
       level_mgdl: r.level_mgdl,
       notes: r.notes ?? "",
     });
@@ -129,88 +128,20 @@ export default function BloodSugarPage() {
           <h1 className="text-3xl font-bold tracking-tight">Blood Sugar</h1>
           <p className="text-muted-foreground">Track your blood sugar readings</p>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm({ reading_date: format(new Date(), "yyyy-MM-dd"), reading_time: format(new Date(), "HH:mm"), meal_slot: "before_breakfast", level_mgdl: 0, notes: "" }); }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger className={buttonVariants({ variant: "default" })}>
             <Plus className="mr-2 h-4 w-4" />Add Reading
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Blood Sugar Reading</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
-                  <Input id="date" type="date" value={form.reading_date} onChange={(e) => setForm({ ...form, reading_date: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="time">Time</Label>
-                  <Input id="time" type="time" value={form.reading_time} onChange={(e) => setForm({ ...form, reading_time: e.target.value })} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="meal_slot">Meal Slot</Label>
-                <Select value={form.meal_slot} onValueChange={(v) => v && setForm({ ...form, meal_slot: v as BloodSugarFormData["meal_slot"] })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(mealSlotLabels).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="level">Level (mg/dL)</Label>
-                <Input id="level" type="number" value={form.level_mgdl || ""} onChange={(e) => setForm({ ...form, level_mgdl: Number(e.target.value) })} />
-                {errors.level_mgdl && <p className="text-sm text-destructive">{errors.level_mgdl}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea id="notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              </div>
-              <Button type="submit" className="w-full" disabled={createReading.isPending}>
-                {createReading.isPending ? "Saving..." : "Save Reading"}
-              </Button>
-            </form>
+            <BloodSugarForm form={form} onChange={setForm} onSubmit={handleSubmit} errors={errors} isPending={createReading.isPending} submitLabel="Save Reading" />
           </DialogContent>
         </Dialog>
 
         <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingId(null); resetForm(); } }}>
           <DialogContent>
             <DialogHeader><DialogTitle>Edit Blood Sugar Reading</DialogTitle></DialogHeader>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-date">Date</Label>
-                  <Input id="edit-date" type="date" value={form.reading_date} onChange={(e) => setForm({ ...form, reading_date: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-time">Time</Label>
-                  <Input id="edit-time" type="time" value={form.reading_time} onChange={(e) => setForm({ ...form, reading_time: e.target.value })} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-meal_slot">Meal Slot</Label>
-                <Select value={form.meal_slot} onValueChange={(v) => v && setForm({ ...form, meal_slot: v as BloodSugarFormData["meal_slot"] })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(mealSlotLabels).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-level">Level (mg/dL)</Label>
-                <Input id="edit-level" type="number" value={form.level_mgdl || ""} onChange={(e) => setForm({ ...form, level_mgdl: Number(e.target.value) })} />
-                {errors.level_mgdl && <p className="text-sm text-destructive">{errors.level_mgdl}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-notes">Notes</Label>
-                <Textarea id="edit-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              </div>
-              <Button type="submit" className="w-full" disabled={updateReading.isPending}>
-                {updateReading.isPending ? "Saving..." : "Update Reading"}
-              </Button>
-            </form>
+            <BloodSugarForm form={form} onChange={setForm} onSubmit={handleEditSubmit} errors={errors} isPending={updateReading.isPending} submitLabel="Update Reading" />
           </DialogContent>
         </Dialog>
       </div>
@@ -292,7 +223,7 @@ export default function BloodSugarPage() {
               <div key={date}>
                 <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  {format(new Date(date), "MMMM d, yyyy")}
+                  {format(parseISO(date), "MMMM d, yyyy")}
                 </h2>
                 <div className="space-y-2">
                   {grouped[date].map((r) => (

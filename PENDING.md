@@ -328,25 +328,16 @@ P3 (Nice to have) → Phase 7 + Phase 8 + Phase 9  (consistency + visual polish 
 **`0` passes validation as a blood sugar level**
 - **Fix:** Changed `z.number().min(0)` to `z.number().min(1)` in `src/features/blood-sugar/schema.ts`.
 
-### Low
+### Low — FIXED
 
 **Server error messages exposed to user via toast**
-- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:76`
-- `toast.error(err.message)` may leak internal details. Log server-side, show a generic message to the user.
+- **Fix:** Extracted `toastError()` helper that logs the error with `console.error` and shows a generic "Something went wrong" message. Used in both add and edit handlers.
 
 **Date format will crash on invalid input**
-- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:258`
-- `format(new Date(date), ...)` throws on invalid dates. Use `parseISO` from date-fns or wrap in try/catch.
-
-**No loading skeleton — FIXED**
-- Replaced plain `"Loading..."` text with skeleton cards that mirror the grouped layout (3 date groups, 2 cards each with placeholder badge/text/icon buttons).
-
-**No error state for failed queries — FIXED**
-- Added error card with `AlertCircle` icon, error message, and `Retry` button that calls `refetch()`.
+- **Fix:** Replaced `new Date(date)` with `parseISO(date)` from date-fns, which safely handles invalid date strings.
 
 **Duplicate form markup between add/edit dialogs**
-- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:136-171` and `:178-212`
-- ~40 lines of near-identical JSX. Extract into a shared `BloodSugarForm` component.
+- **Fix:** Created shared `BloodSugarForm` component at `src/features/blood-sugar/components/BloodSugarForm.tsx`. Both dialogs now use it with different props (`submitLabel`, `isPending`, `onSubmit`).
 
 **`reading_time` stored as empty string instead of `null`**
-- Schema marks `reading_time` as optional, but the form always sends `""`. Inconsistent with `notes` pattern which passes through as-is.
+- **Fix:** In both `useCreateBloodSugar` and `useUpdateBloodSugar` hooks, `reading_time` is now explicitly set to `null` when the value is empty: `reading_time: values.reading_time || null`.
