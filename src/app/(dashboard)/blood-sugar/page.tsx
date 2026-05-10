@@ -13,11 +13,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Activity, Pencil, Trash2 } from "lucide-react";
+import { Plus, Activity, Pencil, Trash2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
+
+const MEAL_SLOT_ORDER: string[] = [
+  "before_breakfast",
+  "after_breakfast",
+  "before_lunch",
+  "after_lunch",
+  "before_dinner",
+  "after_dinner",
+];
 
 export default function BloodSugarPage() {
   const { data: readings, isLoading } = useBloodSugarReadings();
@@ -219,48 +228,80 @@ export default function BloodSugarPage() {
             <Button variant="outline" onClick={() => setOpen(true)}>Add your first reading</Button>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-3">
-          {readings.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-4">
-                  <Badge variant={getLevelColor(r.level_mgdl) as "default" | "destructive"} className="text-base px-3 py-1">
-                    {r.level_mgdl}
-                  </Badge>
-                  <div>
-                    <p className="text-sm font-medium">{mealSlotLabels[r.meal_slot]}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {r.reading_date} {r.reading_time && `at ${r.reading_time}`}
-                    </p>
-                    {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
-                  </div>
+      ) : (() => {
+        const grouped: Record<string, any[]> = readings.reduce((acc: Record<string, any[]>, r: any) => {
+          const date = r.reading_date;
+          if (!acc[date]) acc[date] = [];
+          acc[date].push(r);
+          return acc;
+        }, {} as Record<string, any[]>);
+
+        const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+        sortedDates.forEach((date) => {
+          const entries = grouped[date];
+          if (!entries) return;
+          entries.sort((a, b) => {
+            const aIdx = MEAL_SLOT_ORDER.indexOf(a.meal_slot);
+            const bIdx = MEAL_SLOT_ORDER.indexOf(b.meal_slot);
+            if (aIdx !== bIdx) return aIdx - bIdx;
+            return (a.reading_time ?? "").localeCompare(b.reading_time ?? "");
+          });
+        });
+
+        return (
+          <div className="space-y-6">
+            {sortedDates.map((date) => (
+              <div key={date}>
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  {format(new Date(date), "MMMM d, yyyy")}
+                </h2>
+                <div className="space-y-2">
+                  {grouped[date].map((r) => (
+                    <Card key={r.id}>
+                      <CardContent className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-4">
+                          <Badge variant={getLevelColor(r.level_mgdl) as "default" | "destructive"} className="text-base px-3 py-1 min-w-[3.5rem] justify-center">
+                            {r.level_mgdl}
+                          </Badge>
+                          <div>
+                            <p className="text-sm font-medium">{mealSlotLabels[r.meal_slot]}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {r.reading_time && `at ${r.reading_time.slice(0, 5)}`}
+                            </p>
+                            {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" aria-label="Edit reading" onClick={() => openEdit(r)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Reading</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this blood sugar reading? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <div className="flex justify-end gap-2">
+                                <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
+                              </div>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" aria-label="Edit reading" onClick={() => openEdit(r)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                 <AlertDialog>
-                   <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
-                   <AlertDialogContent>
-                     <AlertDialogHeader>
-                       <AlertDialogTitle>Delete Reading</AlertDialogTitle>
-                       <AlertDialogDescription>
-                         Are you sure you want to delete this blood sugar reading? This action cannot be undone.
-                       </AlertDialogDescription>
-                     </AlertDialogHeader>
-                     <div className="flex justify-end gap-2">
-                       <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
-                       <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
-                     </div>
-                   </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-               </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
