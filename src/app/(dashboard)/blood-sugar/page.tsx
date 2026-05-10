@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useBloodSugarReadings, useCreateBloodSugar, useDeleteBloodSugar } from "@/features/blood-sugar/hooks";
+import { useBloodSugarReadings, useCreateBloodSugar, useUpdateBloodSugar, useDeleteBloodSugar } from "@/features/blood-sugar/hooks";
 import { bloodSugarSchema, type BloodSugarFormData, mealSlotLabels } from "@/features/blood-sugar/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,15 +13,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Activity, Trash2 } from "lucide-react";
+import { Plus, Activity, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 export default function BloodSugarPage() {
   const { data: readings, isLoading } = useBloodSugarReadings();
   const createReading = useCreateBloodSugar();
+  const updateReading = useUpdateBloodSugar();
   const deleteReading = useDeleteBloodSugar();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<BloodSugarFormData>({
     reading_date: format(new Date(), "yyyy-MM-dd"),
     reading_time: format(new Date(), "HH:mm"),
@@ -30,6 +33,16 @@ export default function BloodSugarPage() {
     notes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function resetForm() {
+    setForm({
+      reading_date: format(new Date(), "yyyy-MM-dd"),
+      reading_time: format(new Date(), "HH:mm"),
+      meal_slot: "before_breakfast",
+      level_mgdl: 0,
+      notes: "",
+    });
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,10 +59,49 @@ export default function BloodSugarPage() {
       onSuccess: () => {
         toast.success("Reading added");
         setOpen(false);
-        setForm({ ...form, level_mgdl: 0, notes: "" });
+        resetForm();
       },
       onError: (err) => toast.error(err.message),
     });
+  }
+
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrors({});
+
+    const result = bloodSugarSchema.safeParse(form);
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      setErrors(Object.fromEntries(Object.entries(fieldErrors).map(([k, v]) => [k, v?.[0] ?? ""])));
+      return;
+    }
+
+    if (!editingId) return;
+
+    updateReading.mutate(
+      { id: editingId, ...result.data },
+      {
+        onSuccess: () => {
+          toast.success("Reading updated");
+          setEditOpen(false);
+          setEditingId(null);
+          resetForm();
+        },
+        onError: (err) => toast.error(err.message),
+      },
+    );
+  }
+
+  function openEdit(r: { id: string; reading_date: string; reading_time: string | null; meal_slot: string; level_mgdl: number; notes: string | null }) {
+    setEditingId(r.id);
+    setForm({
+      reading_date: r.reading_date,
+      reading_time: r.reading_time ?? "",
+      meal_slot: r.meal_slot as BloodSugarFormData["meal_slot"],
+      level_mgdl: r.level_mgdl,
+      notes: r.notes ?? "",
+    });
+    setEditOpen(true);
   }
 
   function getLevelColor(level: number) {
@@ -108,6 +160,47 @@ export default function BloodSugarPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingId(null); resetForm(); } }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit Blood Sugar Reading</DialogTitle></DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date">Date</Label>
+                  <Input id="edit-date" type="date" value={form.reading_date} onChange={(e) => setForm({ ...form, reading_date: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-time">Time</Label>
+                  <Input id="edit-time" type="time" value={form.reading_time} onChange={(e) => setForm({ ...form, reading_time: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-meal_slot">Meal Slot</Label>
+                <Select value={form.meal_slot} onValueChange={(v) => v && setForm({ ...form, meal_slot: v as BloodSugarFormData["meal_slot"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(mealSlotLabels).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-level">Level (mg/dL)</Label>
+                <Input id="edit-level" type="number" value={form.level_mgdl || ""} onChange={(e) => setForm({ ...form, level_mgdl: Number(e.target.value) })} />
+                {errors.level_mgdl && <p className="text-sm text-destructive">{errors.level_mgdl}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea id="edit-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              </div>
+              <Button type="submit" className="w-full" disabled={updateReading.isPending}>
+                {updateReading.isPending ? "Saving..." : "Update Reading"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {isLoading ? (
@@ -137,6 +230,10 @@ export default function BloodSugarPage() {
                     {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
                   </div>
                 </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" aria-label="Edit reading" onClick={() => openEdit(r)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                  <AlertDialog>
                    <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
                    <AlertDialogContent>
@@ -151,8 +248,9 @@ export default function BloodSugarPage() {
                        <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
                      </div>
                    </AlertDialogContent>
-                 </AlertDialog>
-              </CardContent>
+                  </AlertDialog>
+                </div>
+               </CardContent>
             </Card>
           ))}
         </div>

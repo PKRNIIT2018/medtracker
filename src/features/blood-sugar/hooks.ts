@@ -44,6 +44,24 @@ export function useCreateBloodSugar() {
   });
 }
 
+export function useUpdateBloodSugar() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...values }: BloodSugarFormData & { id: string }) => {
+      const { error } = await supabase
+        .from("blood_sugar")
+        .update(values)
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["blood-sugar"] });
+    },
+  });
+}
+
 export function useDeleteBloodSugar() {
   const queryClient = useQueryClient();
 
