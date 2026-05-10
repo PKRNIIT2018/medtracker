@@ -338,12 +338,11 @@ P3 (Nice to have) → Phase 7 + Phase 8 + Phase 9  (consistency + visual polish 
 - **File:** `src/app/(dashboard)/blood-sugar/page.tsx:258`
 - `format(new Date(date), ...)` throws on invalid dates. Use `parseISO` from date-fns or wrap in try/catch.
 
-**No loading skeleton**
-- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:222`
-- Shows plain `"Loading..."` text instead of a skeleton matching the grouped card layout.
+**No loading skeleton — FIXED**
+- Replaced plain `"Loading..."` text with skeleton cards that mirror the grouped layout (3 date groups, 2 cards each with placeholder badge/text/icon buttons).
 
-**No error state for failed queries**
-- If `useBloodSugarReadings` errors, the user sees a blank page. No error banner, retry button, or fallback UI.
+**No error state for failed queries — FIXED**
+- Added error card with `AlertCircle` icon, error message, and `Retry` button that calls `refetch()`.
 
 **Duplicate form markup between add/edit dialogs**
 - **File:** `src/app/(dashboard)/blood-sugar/page.tsx:136-171` and `:178-212`

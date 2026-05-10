@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Activity, Pencil, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Activity, Pencil, Trash2, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
@@ -30,7 +30,7 @@ const MEAL_SLOT_ORDER: string[] = [
 ];
 
 export default function BloodSugarPage() {
-  const { data: readings, isLoading } = useBloodSugarReadings();
+  const { data: readings, isLoading, error, refetch } = useBloodSugarReadings();
   const createReading = useCreateBloodSugar();
   const updateReading = useUpdateBloodSugar();
   const deleteReading = useDeleteBloodSugar();
@@ -219,8 +219,44 @@ export default function BloodSugarPage() {
         <SummaryCard summary={summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings.length > 1 ? readings[1] : undefined)} />
       )}
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Loading...</p>
+      {error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 py-12">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <p className="text-destructive font-medium">Failed to load readings</p>
+            <p className="text-sm text-muted-foreground">There was an error fetching your blood sugar data. Please try again.</p>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />Retry
+            </Button>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
+        <div className="space-y-6">
+          {[1, 2, 3].map((group) => (
+            <div key={group}>
+              <div className="h-6 w-48 bg-muted rounded animate-pulse mb-3" />
+              <div className="space-y-2">
+                {[1, 2].map((card) => (
+                  <Card key={card}>
+                    <CardContent className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-4">
+                        <div className="h-8 w-14 bg-muted rounded animate-pulse" />
+                        <div className="space-y-1.5">
+                          <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                          <div className="h-3 w-20 bg-muted rounded animate-pulse" />
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                        <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : !readings?.length ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-12">
