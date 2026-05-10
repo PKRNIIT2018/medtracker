@@ -65,16 +65,68 @@ export default function ReportsPage() {
     const data = await fetchData();
     if (!data || data.length === 0) { toast.error("No data to export"); return; }
 
-    const doc = new jsPDF();
-    doc.text(`${exportLabels[exportType]} Report`, 14, 16);
-    doc.text(`Period: ${dateFrom} to ${dateTo}`, 14, 24);
+    const { data: userData } = await supabase.auth.getUser();
+    const userName = userData?.user?.email ?? "User";
 
-    const headers = Object.keys(data[0]).map((k) => ({ header: k, dataKey: k }));
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("full_name")
+      .eq("user_id", userData?.user?.id)
+      .maybeSingle();
+    const displayName = settings?.full_name || userName;
+
+    const skipCols = new Set(["id", "user_id", "created_at", "deleted_at", "updated_at"]);
+
+    const dateCol = exportType === "medication_intake" ? "taken_date" : "reading_date";
+    const timeCol = exportType === "medication_intake" ? "taken_time" : "reading_time";
+
+    const mealSlotMap: Record<string, string> = {
+      before_breakfast: "Before Breakfast",
+      after_breakfast: "After Breakfast",
+      before_lunch: "Before Lunch",
+      after_lunch: "After Lunch",
+      before_dinner: "Before Dinner",
+      after_dinner: "After Dinner",
+      fasting: "Fasting",
+      bedtime: "Bedtime",
+    };
+
+    const columnLabels: Record<string, string> = {
+      reading_date: "Date",
+      reading_time: "Time",
+      taken_date: "Date",
+      taken_time: "Time",
+      meal_slot: "Meal Slot",
+      level_mgdl: "Level (mg/dL)",
+      systolic: "Systolic",
+      diastolic: "Diastolic",
+      heart_rate: "Heart Rate",
+      status: "Status",
+      medication_id: "Medication",
+      dose_id: "Dose",
+      notes: "Notes",
+    };
+
+    function formatVal(k: string, v: unknown): string {
+      if (v == null) return "";
+      if (k === dateCol) return format(new Date(v as string), "dd-MM-yyyy");
+      if (k === timeCol) return v as string;
+      if (k === "meal_slot") return mealSlotMap[v as string] ?? (v as string);
+      return String(v);
+    }
+
+    const filteredKeys = Object.keys(data[0]).filter((k) => !skipCols.has(k));
+    const headers = filteredKeys.map((k) => ({ header: columnLabels[k] ?? k, dataKey: k }));
     const rows = data.map((r: Record<string, unknown>) =>
-      Object.fromEntries(Object.keys(data[0]).map((k) => [k, String(r[k] ?? "")]))
+      Object.fromEntries(filteredKeys.map((k) => [k, formatVal(k, r[k])]))
     );
 
-    autoTable(doc, { head: [headers.map((h) => h.header)], body: rows.map((r) => Object.values(r)) });
+    const doc = new jsPDF();
+    doc.text(`${exportLabels[exportType]} Report`, 14, 16);
+    doc.text(`Patient: ${displayName}`, 14, 24);
+    doc.text(`Period: ${format(new Date(dateFrom), "dd-MM-yyyy")} to ${format(new Date(dateTo), "dd-MM-yyyy")}`, 14, 32);
+
+    autoTable(doc, { head: [headers.map((h) => h.header)], body: rows.map((r) => Object.values(r)), startY: 38 });
     doc.save(`${exportType}_${dateFrom}_${dateTo}.pdf`);
     toast.success("PDF exported");
   }
