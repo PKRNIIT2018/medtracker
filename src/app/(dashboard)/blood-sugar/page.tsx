@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Activity, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { summarizeBloodSugar } from "@/features/vitals/summary";
+import { SummaryCard } from "@/components/vitals/SummaryCard";
 
 export default function BloodSugarPage() {
   const { data: readings, isLoading } = useBloodSugarReadings();
@@ -202,6 +204,10 @@ export default function BloodSugarPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {readings && readings.length > 0 && (
+        <SummaryCard summary={summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings[1])} />
+      )}
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>

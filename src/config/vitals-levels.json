@@ -1,0 +1,147 @@
+{
+  "blood_pressure": {
+    "systolic": {
+      "unit": "mmHg",
+      "levels": [
+        { "min": 0, "max": 120, "label": "normal", "summary": "Your systolic pressure is normal at {value} mmHg." },
+        { "min": 120, "max": 130, "label": "elevated", "summary": "Your systolic pressure is elevated at {value} mmHg. Consider lifestyle adjustments and monitor regularly." },
+        { "min": 130, "max": 140, "label": "high", "summary": "Your systolic pressure is high at {value} mmHg. Consult your doctor for evaluation." },
+        { "min": 140, "max": 180, "label": "high", "summary": "Your systolic pressure is high at {value} mmHg. Please consult your doctor soon." },
+        { "min": 180, "max": 999, "label": "very_high", "summary": "Your systolic pressure is very high at {value} mmHg. Seek medical attention promptly." }
+      ]
+    },
+    "diastolic": {
+      "unit": "mmHg",
+      "levels": [
+        { "min": 0, "max": 80, "label": "normal", "summary": "Your diastolic pressure is normal at {value} mmHg." },
+        { "min": 80, "max": 90, "label": "elevated", "summary": "Your diastolic pressure is elevated at {value} mmHg. Monitor regularly." },
+        { "min": 90, "max": 120, "label": "high", "summary": "Your diastolic pressure is high at {value} mmHg. Consult your doctor." },
+        { "min": 120, "max": 999, "label": "very_high", "summary": "Your diastolic pressure is very high at {value} mmHg. Seek medical attention promptly." }
+      ]
+    },
+    "heart_rate": {
+      "unit": "bpm",
+      "levels": [
+        { "min": 0, "max": 60, "label": "low", "summary": "Your resting heart rate is low at {value} bpm. If you are not an athlete, consult your doctor." },
+        { "min": 60, "max": 100, "label": "normal", "summary": "Your heart rate is normal at {value} bpm." },
+        { "min": 100, "max": 999, "label": "high", "summary": "Your heart rate is elevated at {value} bpm. Rest and recheck; consult your doctor if persistent." }
+      ]
+    },
+    "overall": {
+      "levels": [
+        {
+          "label": "normal",
+          "condition": "systolic < 120 AND diastolic < 80",
+          "summary": "Your blood pressure ({systolic}/{diastolic}) is within the normal range. Keep up the good work!"
+        },
+        {
+          "label": "elevated",
+          "condition": "systolic < 130 AND diastolic < 80",
+          "summary": "Your blood pressure ({systolic}/{diastolic}) is elevated. Consider reducing salt intake, exercising regularly, and managing stress."
+        },
+        {
+          "label": "high",
+          "condition": "systolic < 180 OR diastolic < 120",
+          "summary": "Your blood pressure ({systolic}/{diastolic}) is high. Please consult your doctor for evaluation and management."
+        },
+        {
+          "label": "very_high",
+          "condition": "systolic >= 180 OR diastolic >= 120",
+          "summary": "Your blood pressure ({systolic}/{diastolic}) is very high. Recheck after a minute; if it stays this high, seek urgent medical advice, especially if you have chest pain, breathlessness, weakness, vision changes, or severe headache."
+        }
+      ]
+    }
+  },
+  "blood_sugar": {
+    "fasting": {
+      "unit": "mg/dL",
+      "levels": [
+        { "min": 0, "max": 54, "label": "very_low", "summary": "Your fasting blood sugar is dangerously low at {value} mg/dL. Consume fast-acting sugar immediately and seek medical help." },
+        { "min": 54, "max": 70, "label": "low", "summary": "Your fasting blood sugar is low at {value} mg/dL. Eat or drink something sugary and recheck." },
+        { "min": 70, "max": 100, "label": "normal", "summary": "Your fasting blood sugar is normal at {value} mg/dL." },
+        { "min": 100, "max": 126, "label": "elevated", "summary": "Your fasting blood sugar is elevated at {value} mg/dL. This may indicate prediabetes; consult your doctor." },
+        { "min": 126, "max": 999, "label": "high", "summary": "Your fasting blood sugar is high at {value} mg/dL. This may indicate diabetes; please consult your doctor." }
+      ]
+    },
+    "after_meal": {
+      "unit": "mg/dL",
+      "levels": [
+        { "min": 0, "max": 54, "label": "very_low", "summary": "Your blood sugar is dangerously low at {value} mg/dL. Consume fast-acting sugar immediately and seek medical help." },
+        { "min": 54, "max": 70, "label": "low", "summary": "Your blood sugar is low at {value} mg/dL. Eat or drink something sugary and recheck." },
+        { "min": 70, "max": 140, "label": "normal", "summary": "Your post-meal blood sugar is normal at {value} mg/dL." },
+        { "min": 140, "max": 200, "label": "elevated", "summary": "Your post-meal blood sugar is elevated at {value} mg/dL. Monitor and discuss with your doctor." },
+        { "min": 200, "max": 999, "label": "high", "summary": "Your post-meal blood sugar is high at {value} mg/dL. Please consult your doctor." }
+      ]
+    }
+  },
+  "blood_panel": {
+    "s_chol": {
+      "label": "Total Cholesterol",
+      "unit": "mmol/l",
+      "levels": [
+        { "min": 0, "max": 5.0, "label": "normal", "summary": "Your total cholesterol is normal at {value} mmol/L." },
+        { "min": 5.0, "max": 6.2, "label": "elevated", "summary": "Your total cholesterol is elevated at {value} mmol/L. Consider dietary changes and consult your doctor." },
+        { "min": 6.2, "max": 999, "label": "high", "summary": "Your total cholesterol is high at {value} mmol/L. Please consult your doctor for management." }
+      ]
+    },
+    "s_tag": {
+      "label": "Triglycerides",
+      "unit": "mmol/l",
+      "levels": [
+        { "min": 0, "max": 1.7, "label": "normal", "summary": "Your triglycerides are normal at {value} mmol/L." },
+        { "min": 1.7, "max": 2.3, "label": "elevated", "summary": "Your triglycerides are elevated at {value} mmol/L. Consider reducing sugars and refined carbs." },
+        { "min": 2.3, "max": 5.6, "label": "high", "summary": "Your triglycerides are high at {value} mmol/L. Consult your doctor for evaluation." },
+        { "min": 5.6, "max": 999, "label": "very_high", "summary": "Your triglycerides are very high at {value} mmol/L. Seek medical evaluation promptly." }
+      ]
+    },
+    "s_hdl": {
+      "label": "HDL Cholesterol",
+      "unit": "mmol/l",
+      "levels": [
+        { "min": 0, "max": 1.0, "label": "low", "summary": "Your HDL (good) cholesterol is low at {value} mmol/L. Regular exercise and healthy fats can help raise it." },
+        { "min": 1.0, "max": 1.55, "label": "normal", "summary": "Your HDL (good) cholesterol is adequate at {value} mmol/L." },
+        { "min": 1.55, "max": 999, "label": "normal", "summary": "Your HDL (good) cholesterol is optimal at {value} mmol/L." }
+      ]
+    },
+    "non_hdl": {
+      "label": "Non-HDL Cholesterol",
+      "unit": "mmol/l",
+      "levels": [
+        { "min": 0, "max": 4.0, "label": "normal", "summary": "Your non-HDL cholesterol is normal at {value} mmol/L." },
+        { "min": 4.0, "max": 5.0, "label": "elevated", "summary": "Your non-HDL cholesterol is elevated at {value} mmol/L. Discuss with your doctor." },
+        { "min": 5.0, "max": 999, "label": "high", "summary": "Your non-HDL cholesterol is high at {value} mmol/L. Please consult your doctor." }
+      ]
+    },
+    "s_ck": {
+      "label": "Creatine Kinase",
+      "unit": "ukat/l",
+      "levels": [
+        { "min": 0, "max": 0.2, "label": "low", "summary": "Your creatine kinase is low at {value} ukat/L. This may be normal but consult your doctor if concerned." },
+        { "min": 0.2, "max": 2.27, "label": "normal", "summary": "Your creatine kinase is normal at {value} ukat/L." },
+        { "min": 2.27, "max": 999, "label": "high", "summary": "Your creatine kinase is elevated at {value} ukat/L. This may indicate muscle stress or injury; consult your doctor." }
+      ]
+    },
+    "b_hba1c_dc": {
+      "label": "HbA1c (DCCT %)",
+      "unit": "%",
+      "levels": [
+        { "min": 0, "max": 5.7, "label": "normal", "summary": "Your HbA1c is normal at {value}%. Good glucose control." },
+        { "min": 5.7, "max": 6.0, "label": "normal", "summary": "Your HbA1c is normal at {value}%. Continue maintaining healthy habits." },
+        { "min": 6.0, "max": 6.5, "label": "elevated", "summary": "Your HbA1c is elevated at {value}%. This indicates prediabetes. Consider lifestyle changes." },
+        { "min": 6.5, "max": 8.0, "label": "high", "summary": "Your HbA1c is high at {value}%. This indicates diabetes. Consult your doctor for management." },
+        { "min": 8.0, "max": 999, "label": "very_high", "summary": "Your HbA1c is very high at {value}%. Please consult your doctor urgently for diabetes management." }
+      ]
+    },
+    "b_hba1c_if": {
+      "label": "HbA1c (IFCC)",
+      "unit": "mmol/mol",
+      "levels": [
+        { "min": 0, "max": 39, "label": "normal", "summary": "Your HbA1c is normal at {value} mmol/mol." },
+        { "min": 39, "max": 42, "label": "normal", "summary": "Your HbA1c is normal at {value} mmol/mol. Keep up healthy habits." },
+        { "min": 42, "max": 48, "label": "elevated", "summary": "Your HbA1c is elevated at {value} mmol/mol. This indicates prediabetes." },
+        { "min": 48, "max": 64, "label": "high", "summary": "Your HbA1c is high at {value} mmol/mol. This indicates diabetes; consult your doctor." },
+        { "min": 64, "max": 999, "label": "very_high", "summary": "Your HbA1c is very high at {value} mmol/mol. Urgently consult your doctor." }
+      ]
+    }
+  }
+}

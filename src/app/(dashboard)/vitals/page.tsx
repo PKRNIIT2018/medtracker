@@ -20,6 +20,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AddVitalsDialogContent } from "@/components/vitals/AddVitalsDialog";
+import { summarizeBloodPressure } from "@/features/vitals/summary";
+import { SummaryCard } from "@/components/vitals/SummaryCard";
 
 const dateStr = format(new Date(), "yyyy-MM-dd");
 
@@ -244,6 +246,9 @@ export default function VitalsPage() {
           <TabsTrigger value="blood-panel">Blood Panel</TabsTrigger>
         </TabsList>
         <TabsContent value="blood-pressure" className="space-y-3 pt-4">
+          {bpReadings && bpReadings.length > 0 && (
+            <SummaryCard summary={summarizeBloodPressure(bpReadings[0].systolic, bpReadings[0].diastolic, bpReadings[0].heart_rate, bpReadings[1] ? { systolic: bpReadings[1].systolic, diastolic: bpReadings[1].diastolic } : undefined)[0]} />
+          )}
           {!bpReadings?.length ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">No blood pressure readings yet. Track your systolic and diastolic readings to monitor heart health.</CardContent></Card>
           ) : bpReadings.map((r) => (
