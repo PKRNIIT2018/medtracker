@@ -168,57 +168,11 @@ export default function VitalsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Vitals</h1>
           <p className="text-muted-foreground">Track blood pressure, HbA1c, and weight</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setTab("blood-pressure"); } }}>
           <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Reading</DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Vitals Reading</DialogTitle></DialogHeader>
-        {/* Edit Dialog */}
-        <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditId(null); setEditType(null); } }}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Edit {editType === "bp" ? "Blood Pressure" : editType === "panel" ? "Blood Panel" : "Weight"}</DialogTitle></DialogHeader>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              {editType === "bp" && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Systolic</Label><Input type="number" value={bpForm.systolic} onChange={(e) => setBpForm({ ...bpForm, systolic: Number(e.target.value) })} /></div>
-                    <div className="space-y-2"><Label>Diastolic</Label><Input type="number" value={bpForm.diastolic} onChange={(e) => setBpForm({ ...bpForm, diastolic: Number(e.target.value) })} /></div>
-                  </div>
-                  <div className="space-y-2"><Label>Heart Rate</Label><Input type="number" value={bpForm.heart_rate ?? ""} onChange={(e) => setBpForm({ ...bpForm, heart_rate: e.target.value ? Number(e.target.value) : null })} /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Date</Label><Input type="date" value={bpForm.reading_date} onChange={(e) => setBpForm({ ...bpForm, reading_date: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Time</Label><Input type="time" value={bpForm.reading_time} onChange={(e) => setBpForm({ ...bpForm, reading_time: e.target.value })} /></div>
-                  </div>
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={bpForm.notes} onChange={(e) => setBpForm({ ...bpForm, notes: e.target.value })} /></div>
-                </>
-              )}
-              {editType === "weight" && (
-                <>
-                  <div className="space-y-2"><Label>Weight (kg)</Label><Input type="number" step="0.1" value={weightForm.weight_kg} onChange={(e) => setWeightForm({ ...weightForm, weight_kg: Number(e.target.value) })} /></div>
-                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={weightForm.reading_date} onChange={(e) => setWeightForm({ ...weightForm, reading_date: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={weightForm.notes} onChange={(e) => setWeightForm({ ...weightForm, notes: e.target.value })} /></div>
-                </>
-              )}
-              {editType === "panel" && (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    {panelFields.map((f) => (
-                      <div key={f.key} className={f.key === "b_hba1c_if" ? "col-span-2" : ""}>
-                        <Label>{f.label} ({f.unit})</Label>
-                        <Input type="number" step="0.01" min="0" value={panelForm[f.key]} onChange={(e) => setPanelForm({ ...panelForm, [f.key]: e.target.value })} />
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">{f.range}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={panelForm.reading_date} onChange={(e) => setPanelForm({ ...panelForm, reading_date: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Notes</Label><Textarea value={panelForm.notes} onChange={(e) => setPanelForm({ ...panelForm, notes: e.target.value })} rows={2} /></div>
-                </div>
-              )}
-              <Button type="submit" className="w-full" disabled={updateBP.isPending || updateWeight.isPending || updatePanel.isPending}>Save Changes</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-      <Tabs value={tab} onValueChange={setTab}>
+            <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="blood-pressure">BP</TabsTrigger>
                 <TabsTrigger value="weight">Weight</TabsTrigger>
@@ -239,7 +193,6 @@ export default function VitalsPage() {
                   <Button type="submit" className="w-full" disabled={createBP.isPending}>Save</Button>
                 </form>
               </TabsContent>
-
               <TabsContent value="weight">
                 <form onSubmit={handleSubmitWeight} className="space-y-4 pt-4">
                   <div className="space-y-2"><Label>Weight (kg)</Label><Input type="number" step="0.1" value={weightForm.weight_kg} onChange={(e) => setWeightForm({ ...weightForm, weight_kg: Number(e.target.value) })} /></div>
@@ -255,7 +208,7 @@ export default function VitalsPage() {
                       <div key={f.key} className={f.key === "b_hba1c_if" ? "col-span-2" : ""}>
                         <Label>{f.label} ({f.unit})</Label>
                         <Input type="number" step="0.01" min="0" value={panelForm[f.key]} onChange={(e) => setPanelForm({ ...panelForm, [f.key]: e.target.value })} />
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">{f.range}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{f.range}</p>
                       </div>
                     ))}
                   </div>
@@ -268,6 +221,51 @@ export default function VitalsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditId(null); setEditType(null); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit {editType === "bp" ? "Blood Pressure" : editType === "panel" ? "Blood Panel" : "Weight"}</DialogTitle></DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            {editType === "bp" && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>Systolic</Label><Input type="number" value={bpForm.systolic} onChange={(e) => setBpForm({ ...bpForm, systolic: Number(e.target.value) })} /></div>
+                  <div className="space-y-2"><Label>Diastolic</Label><Input type="number" value={bpForm.diastolic} onChange={(e) => setBpForm({ ...bpForm, diastolic: Number(e.target.value) })} /></div>
+                </div>
+                <div className="space-y-2"><Label>Heart Rate</Label><Input type="number" value={bpForm.heart_rate ?? ""} onChange={(e) => setBpForm({ ...bpForm, heart_rate: e.target.value ? Number(e.target.value) : null })} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>Date</Label><Input type="date" value={bpForm.reading_date} onChange={(e) => setBpForm({ ...bpForm, reading_date: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Time</Label><Input type="time" value={bpForm.reading_time} onChange={(e) => setBpForm({ ...bpForm, reading_time: e.target.value })} /></div>
+                </div>
+                <div className="space-y-2"><Label>Notes</Label><Textarea value={bpForm.notes} onChange={(e) => setBpForm({ ...bpForm, notes: e.target.value })} /></div>
+              </>
+            )}
+            {editType === "weight" && (
+              <>
+                <div className="space-y-2"><Label>Weight (kg)</Label><Input type="number" step="0.1" value={weightForm.weight_kg} onChange={(e) => setWeightForm({ ...weightForm, weight_kg: Number(e.target.value) })} /></div>
+                <div className="space-y-2"><Label>Date</Label><Input type="date" value={weightForm.reading_date} onChange={(e) => setWeightForm({ ...weightForm, reading_date: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Notes</Label><Textarea value={weightForm.notes} onChange={(e) => setWeightForm({ ...weightForm, notes: e.target.value })} /></div>
+              </>
+            )}
+            {editType === "panel" && (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {panelFields.map((f) => (
+                    <div key={f.key} className={f.key === "b_hba1c_if" ? "col-span-2" : ""}>
+                      <Label>{f.label} ({f.unit})</Label>
+                      <Input type="number" step="0.01" min="0" value={panelForm[f.key]} onChange={(e) => setPanelForm({ ...panelForm, [f.key]: e.target.value })} />
+                      <p className="mt-0.5 text-xs text-muted-foreground">{f.range}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2"><Label>Date</Label><Input type="date" value={panelForm.reading_date} onChange={(e) => setPanelForm({ ...panelForm, reading_date: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Notes</Label><Textarea value={panelForm.notes} onChange={(e) => setPanelForm({ ...panelForm, notes: e.target.value })} rows={2} /></div>
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={updateBP.isPending || updateWeight.isPending || updatePanel.isPending}>Save Changes</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap">
@@ -324,7 +322,7 @@ export default function VitalsPage() {
                     {panelFields.map((f) => (
                       <th key={f.key} className="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground">
                         <div>{f.label}</div>
-                        <div className="text-[10px] font-normal">{f.range}</div>
+                        <div className="text-xs font-normal">{f.range}</div>
                       </th>
                     ))}
                     <th className="w-16 px-3 py-2" />

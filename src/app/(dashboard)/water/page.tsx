@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useWaterEntries, useAddWater } from "@/features/water/hooks";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Droplets, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -55,10 +56,10 @@ export default function WaterPage() {
               </Button>
             ))}
             <div className="flex gap-2">
-              <input
+              <Input
                 type="number"
                 placeholder="Custom"
-                className="w-20 rounded-md border px-2 py-1 text-sm"
+                className="w-20"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
               />

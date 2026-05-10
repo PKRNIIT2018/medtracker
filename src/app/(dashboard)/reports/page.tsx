@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -100,8 +101,8 @@ export default function ReportsPage() {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>From</Label><input type="date" className="w-full rounded-md border px-3 py-2 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} /></div>
-            <div className="space-y-2"><Label>To</Label><input type="date" className="w-full rounded-md border px-3 py-2 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></div>
+            <div className="space-y-2"><Label>From</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} /></div>
+            <div className="space-y-2"><Label>To</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></div>
           </div>
           <div className="flex gap-2">
             <Button onClick={exportCSV} variant="outline"><Download className="mr-2 h-4 w-4" />Export CSV</Button>
