@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Activity, Pencil, Trash2, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, Activity, Pencil, Trash2, ChevronRight, AlertCircle, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
+import { cn } from "@/lib/utils";
 import type { BloodSugar } from "@/types/database";
 
 const MEAL_SLOT_ORDER: string[] = [
@@ -25,6 +26,30 @@ const MEAL_SLOT_ORDER: string[] = [
   "before_dinner",
   "after_dinner",
 ];
+
+function getLevelStatus(level: number): "normal" | "low" | "high" {
+  if (level < 70) return "low";
+  if (level > 140) return "high";
+  return "normal";
+}
+
+const statusColors: Record<string, string> = {
+  normal: "border-l-green-500",
+  low: "border-l-red-400",
+  high: "border-l-red-500",
+};
+
+const statusBadgeColors: Record<string, string> = {
+  normal: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+  low: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  high: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+};
+
+function formatDateHeader(date: string): string {
+  if (isToday(parseISO(date))) return "Today";
+  if (isYesterday(parseISO(date))) return "Yesterday";
+  return format(parseISO(date), "MMMM d, yyyy");
+}
 
 function toastError(err: unknown) {
   console.error(err);
@@ -116,9 +141,13 @@ export default function BloodSugarPage() {
   }
 
   function getLevelColor(level: number) {
-    if (level < 70) return "destructive";
-    if (level > 140) return "destructive";
-    return "default";
+    return getLevelStatus(level) === "normal" ? "default" : "destructive";
+  }
+
+  function StatusIcon({ status }: { status: string }) {
+    if (status === "normal") return <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />;
+    if (status === "low") return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    return <AlertTriangle className="h-4 w-4 text-red-500" />;
   }
 
   return (
@@ -220,50 +249,54 @@ export default function BloodSugarPage() {
         return (
           <div className="space-y-6">
             {sortedDates.map((date) => (
-              <div key={date}>
-                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  {format(parseISO(date), "MMMM d, yyyy")}
-                </h2>
-                <div className="space-y-2">
-                  {grouped[date].map((r) => (
-                    <Card key={r.id}>
-                      <CardContent className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-4">
-                          <Badge variant={getLevelColor(r.level_mgdl) as "default" | "destructive"} className="text-base px-3 py-1 min-w-[3.5rem] justify-center">
-                            {r.level_mgdl}
-                          </Badge>
-                          <div>
-                            <p className="text-sm font-medium">{mealSlotLabels[r.meal_slot]}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {r.reading_time && `at ${r.reading_time.slice(0, 5)}`}
-                            </p>
-                            {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" aria-label="Edit reading" onClick={() => openEdit(r)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Reading</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this blood sugar reading? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <div className="flex justify-end gap-2">
-                                <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
-                                <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
+<div key={date}>
+                    <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      {formatDateHeader(date)}
+                    </h2>
+                    <div className="space-y-2">
+                      {grouped[date].map((r) => {
+                        const status = getLevelStatus(r.level_mgdl);
+                        return (
+                          <Card key={r.id} className={cn("border-l-4 pl-0", statusColors[status])}>
+                            <CardContent className="flex items-center justify-between py-3">
+                              <div className="flex items-center gap-3">
+                                <span className={cn("inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold min-w-[3.5rem]", statusBadgeColors[status])}>
+                                  {r.level_mgdl}
+                                </span>
+                                <div>
+                                  <p className="text-sm font-medium">{mealSlotLabels[r.meal_slot]}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {r.reading_time && format(parseISO("2000-01-01T" + r.reading_time), "h:mm a")}
+                                  </p>
+                                  {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
+                                </div>
                               </div>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                              <div className="flex items-center gap-1">
+                                <StatusIcon status={status} />
+                                <Button variant="ghost" size="icon" aria-label="Edit reading" onClick={() => openEdit(r)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Reading</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete this blood sugar reading? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="flex justify-end gap-2">
+                                      <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
+                                    </div>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                 </div>
               </div>
             ))}

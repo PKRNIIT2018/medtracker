@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pill, Pencil, Trash2, Package, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { Medication } from "@/types/database";
 
 const timeOfDayOptions = [
@@ -35,6 +36,12 @@ const typeLabels: Record<string, string> = {
   injection: "Injection",
 };
 
+interface FormState {
+  name: string; type: "tablet" | "liquid" | "injection";
+  strength: string; time_of_day: string[]; is_active: boolean;
+  active_substance: string; stock_count: string; ai_summary: string;
+}
+
 export default function MedicationsPage() {
   const { data: medications, isLoading } = useMedications();
   const createMedication = useCreateMedication();
@@ -46,12 +53,6 @@ export default function MedicationsPage() {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  interface FormState {
-    name: string; type: "tablet" | "liquid" | "injection";
-    strength: string; time_of_day: string[]; is_active: boolean;
-    active_substance: string; stock_count: string; ai_summary: string;
-  }
-
   const [form, setForm] = useState<FormState>({
     name: "", type: "tablet", strength: "",
     time_of_day: ["morning"], is_active: true,
@@ -105,7 +106,7 @@ export default function MedicationsPage() {
         setOpen(false);
         resetForm();
       },
-      onError: (err) => toast.error(err.message),
+      onError: () => toast.error("Something went wrong. Please try again."),
     });
   }
 
@@ -138,8 +139,70 @@ export default function MedicationsPage() {
         setEditingId(null);
         resetForm();
       },
-      onError: (err) => toast.error(err.message),
+      onError: () => toast.error("Something went wrong. Please try again."),
     });
+  }
+
+  function MedicationFormFields() {
+    return (
+      <>
+        <div className="space-y-2">
+          <Label htmlFor="med-name">Name</Label>
+          <Input id="med-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="med-type">Type</Label>
+          <Select value={form.type} onValueChange={(v) => v && setForm({ ...form, type: v as "tablet" | "liquid" | "injection" })}>
+            <SelectTrigger id="med-type"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(typeLabels).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="med-strength">Strength</Label>
+          <Input id="med-strength" placeholder="e.g. 80 mg" value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })} />
+          {errors.strength && <p className="text-sm text-destructive">{errors.strength}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label>Time of Day</Label>
+          <div className="flex flex-wrap gap-4">
+            {timeOfDayOptions.map(({ value, label }) => (
+              <label key={value} className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={form.time_of_day.includes(value)}
+                  onCheckedChange={() =>
+                    setForm({
+                      ...form,
+                      time_of_day: form.time_of_day.includes(value)
+                        ? form.time_of_day.filter((t) => t !== value)
+                        : [...form.time_of_day, value],
+                    })
+                  }
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          {errors.time_of_day && <p className="text-sm text-destructive">{errors.time_of_day}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="med-substance">Active Substance</Label>
+          <Input id="med-substance" placeholder="e.g. Metformin" value={form.active_substance ?? ""} onChange={(e) => setForm({ ...form, active_substance: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="med-stock">Stock Count</Label>
+          <Input id="med-stock" type="number" min="0" placeholder="0" value={form.stock_count} onChange={(e) => setForm({ ...form, stock_count: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="med-summary">AI Summary</Label>
+          <Textarea id="med-summary" placeholder="AI-generated summary..." rows={3} value={form.ai_summary ?? ""} onChange={(e) => setForm({ ...form, ai_summary: e.target.value })} />
+        </div>
+      </>
+    );
   }
 
   return (
@@ -159,61 +222,7 @@ export default function MedicationsPage() {
               <DialogTitle>Add Medication</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Type</Label>
-                <Select value={form.type} onValueChange={(v) => v && setForm({ ...form, type: v as "tablet" | "liquid" | "injection" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(typeLabels).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="strength">Strength</Label>
-                <Input id="strength" placeholder="e.g. 80 mg" value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })} />
-                {errors.strength && <p className="text-sm text-destructive">{errors.strength}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Time of Day</Label>
-                <div className="flex flex-wrap gap-4">
-                  {timeOfDayOptions.map(({ value, label }) => (
-                    <label key={value} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={form.time_of_day.includes(value)}
-                        onCheckedChange={() =>
-                          setForm({
-                            ...form,
-                            time_of_day: form.time_of_day.includes(value)
-                              ? form.time_of_day.filter((t) => t !== value)
-                              : [...form.time_of_day, value],
-                          })
-                        }
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-                {errors.time_of_day && <p className="text-sm text-destructive">{errors.time_of_day}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="active_substance">Active Substance</Label>
-                <Input id="active_substance" placeholder="e.g. Metformin" value={form.active_substance ?? ""} onChange={(e) => setForm({ ...form, active_substance: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock_count">Stock Count</Label>
-                <Input id="stock_count" type="number" min="0" placeholder="0" value={form.stock_count} onChange={(e) => setForm({ ...form, stock_count: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ai_summary">AI Summary</Label>
-                <Textarea id="ai_summary" placeholder="AI-generated summary..." rows={3} value={form.ai_summary ?? ""} onChange={(e) => setForm({ ...form, ai_summary: e.target.value })} />
-              </div>
+              <MedicationFormFields />
               <Button type="submit" className="w-full" disabled={createMedication.isPending}>
                 {createMedication.isPending ? "Adding..." : "Add Medication"}
               </Button>
@@ -221,68 +230,13 @@ export default function MedicationsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog */}
         <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingId(null); resetForm(); } }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Medication</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Name</Label>
-                <Input id="edit-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-type">Type</Label>
-                <Select value={form.type} onValueChange={(v) => v && setForm({ ...form, type: v as "tablet" | "liquid" | "injection" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(typeLabels).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-strength">Strength</Label>
-                <Input id="edit-strength" placeholder="e.g. 80 mg" value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })} />
-                {errors.strength && <p className="text-sm text-destructive">{errors.strength}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Time of Day</Label>
-                <div className="flex flex-wrap gap-4">
-                  {timeOfDayOptions.map(({ value, label }) => (
-                    <label key={value} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={form.time_of_day.includes(value)}
-                        onCheckedChange={() =>
-                          setForm({
-                            ...form,
-                            time_of_day: form.time_of_day.includes(value)
-                              ? form.time_of_day.filter((t) => t !== value)
-                              : [...form.time_of_day, value],
-                          })
-                        }
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-                {errors.time_of_day && <p className="text-sm text-destructive">{errors.time_of_day}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-active_substance">Active Substance</Label>
-                <Input id="edit-active_substance" placeholder="e.g. Metformin" value={form.active_substance ?? ""} onChange={(e) => setForm({ ...form, active_substance: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-stock_count">Stock Count</Label>
-                <Input id="edit-stock_count" type="number" min="0" placeholder="0" value={form.stock_count} onChange={(e) => setForm({ ...form, stock_count: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-ai_summary">AI Summary</Label>
-                <Textarea id="edit-ai_summary" placeholder="AI-generated summary..." rows={3} value={form.ai_summary ?? ""} onChange={(e) => setForm({ ...form, ai_summary: e.target.value })} />
-              </div>
+              <MedicationFormFields />
               <Button type="submit" className="w-full" disabled={updateMedication.isPending}>
                 {updateMedication.isPending ? "Saving..." : "Save Changes"}
               </Button>
@@ -291,36 +245,37 @@ export default function MedicationsPage() {
         </Dialog>
       </div>
 
-      {/* Today's Log */}
       {!isLoading && medications && medications.some((m) => m.is_active) && (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 border-b">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Today's Log</CardTitle>
+              <CardTitle className="text-base">Today&apos;s Log</CardTitle>
               <span className="text-sm text-muted-foreground">
                 {(() => {
                   const totalSlots = medications
                     .filter((m) => m.is_active)
                     .reduce((sum, m) => sum + m.time_of_day.length, 0);
                   const done = todayIntake?.filter((i) => i.status === "taken").length ?? 0;
-                  return `${done} of ${totalSlots} taken`;
+                  const skipped = todayIntake?.filter((i) => i.status === "skipped").length ?? 0;
+                  const skippedText = skipped > 0 ? ` + ${skipped} skipped` : "";
+                  return `${done} of ${totalSlots} taken${skippedText}`;
                 })()}
               </span>
             </div>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="p-0">
             {medications
               .filter((m) => m.is_active)
               .map((med) => (
                 <div
                   key={med.id}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-muted/30 transition-colors"
                 >
-                  <div>
-                    <p className="text-sm font-medium">{med.name}</p>
-                    <p className="text-xs text-muted-foreground">{med.strength}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">{med.name}</p>
+                    <p className="text-xs text-muted-foreground">{med.strength} - {med.time_of_day.length}x daily</p>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {med.time_of_day.map((slot: string) => {
                       const entry = todayIntake?.find(
                         (i) => i.medication_id === med.id && i.notes === slot
@@ -340,12 +295,12 @@ export default function MedicationsPage() {
                               notes: slot,
                             })
                           }
-                          className={`
-                            inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors
-                            ${isTaken ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}
-                            ${isSkipped ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" : ""}
-                            ${!isTaken && !isSkipped ? "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary" : ""}
-                          `}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-150 min-w-[5rem] justify-center",
+                            isTaken && "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 shadow-sm",
+                            isSkipped && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                            !isTaken && !isSkipped && "bg-muted text-muted-foreground hover:bg-primary/15 hover:text-primary"
+                          )}
                         >
                           <span>{timeOfDayLabels[slot]}</span>
                           {isTaken && <Check className="h-3 w-3" />}
@@ -372,16 +327,16 @@ export default function MedicationsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {medications.map((med) => (
-            <Card key={med.id} className={med.is_active ? "" : "opacity-60"}>
+            <Card key={med.id} className={cn(!med.is_active && "opacity-70")}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <CardTitle className="text-base">{med.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{med.strength} — {typeLabels[med.type]}</p>
+                    <p className="text-sm text-muted-foreground">{med.strength} - {typeLabels[med.type]}</p>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit medication" onClick={() => openEdit(med)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -391,7 +346,7 @@ export default function MedicationsPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Medication</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete "{med.name}"? This action cannot be undone.
+                            Are you sure you want to delete this medication? This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="flex justify-end gap-2">
@@ -407,12 +362,13 @@ export default function MedicationsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex flex-wrap gap-1">
                     {(med.time_of_day ?? []).map((t: string) => (
-                      <Badge key={t} variant="outline">{timeOfDayLabels[t]}</Badge>
+                      <Badge key={t} variant="outline" className="text-xs">{timeOfDayLabels[t]}</Badge>
                     ))}
                   </div>
                   <Button
-                    variant={med.is_active ? "default" : "secondary"}
+                    variant={med.is_active ? "default" : "outline"}
                     size="sm"
+                    className={cn(!med.is_active && "opacity-60")}
                     onClick={() => toggleMedication.mutate({ id: med.id, is_active: !med.is_active })}
                   >
                     {med.is_active ? "Active" : "Inactive"}
@@ -430,9 +386,10 @@ export default function MedicationsPage() {
                   </p>
                 )}
                 {med.ai_summary && (
-                  <p className="text-xs text-muted-foreground line-clamp-3">
-                    <span className="font-medium">AI Summary:</span> {med.ai_summary}
-                  </p>
+                  <div className="rounded-lg bg-accent/30 p-2.5 border border-accent/50">
+                    <p className="text-xs font-medium text-accent-foreground mb-0.5">AI Summary</p>
+                    <p className="text-xs text-muted-foreground line-clamp-3">{med.ai_summary}</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

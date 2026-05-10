@@ -14,14 +14,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, HeartPulse, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { AddVitalsDialogContent } from "@/components/vitals/AddVitalsDialog";
 import { summarizeBloodPressure } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
+
+function bpStatusColor(systolic: number, diastolic: number): string {
+  if (systolic >= 180 || diastolic >= 120) return "border-l-red-500";
+  if (systolic >= 140 || diastolic >= 90) return "border-l-red-400";
+  if (systolic >= 130 || diastolic >= 80) return "border-l-amber-400";
+  return "border-l-green-500";
+}
+
+function bpStatusLabel(systolic: number, diastolic: number): string {
+  if (systolic >= 180 || diastolic >= 120) return "Very High";
+  if (systolic >= 140 || diastolic >= 90) return "High";
+  if (systolic >= 130 || diastolic >= 80) return "Elevated";
+  return "Normal";
+}
 
 const dateStr = format(new Date(), "yyyy-MM-dd");
 
@@ -245,37 +259,48 @@ export default function VitalsPage() {
           <TabsTrigger value="weight">Weight</TabsTrigger>
           <TabsTrigger value="blood-panel">Blood Panel</TabsTrigger>
         </TabsList>
-        <TabsContent value="blood-pressure" className="space-y-3 pt-4">
+<TabsContent value="blood-pressure" className="space-y-3 pt-4">
           {bpReadings && bpReadings.length > 0 && (
             <SummaryCard summary={summarizeBloodPressure(bpReadings[0].systolic, bpReadings[0].diastolic, bpReadings[0].heart_rate, bpReadings[1] ? { systolic: bpReadings[1].systolic, diastolic: bpReadings[1].diastolic } : undefined)[0]} />
           )}
           {!bpReadings?.length ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">No blood pressure readings yet. Track your systolic and diastolic readings to monitor heart health.</CardContent></Card>
           ) : bpReadings.map((r) => (
-            <Card key={r.id}>
+            <Card key={r.id} className={cn("border-l-4 pl-0", bpStatusColor(r.systolic, r.diastolic))}>
               <CardContent className="flex items-center justify-between py-4">
-                <div>
-                  <p className="font-bold">{r.systolic}/{r.diastolic} <span className="text-sm font-normal text-muted-foreground">mmHg</span></p>
-                  <p className="text-xs text-muted-foreground">{r.reading_date}{r.heart_rate && ` | HR: ${r.heart_rate} bpm`}</p>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="text-2xl font-bold leading-none">{r.systolic}<span className="text-lg font-normal text-muted-foreground">/{r.diastolic}</span></p>
+                    <p className="text-sm font-medium text-muted-foreground mt-0.5">{bpStatusLabel(r.systolic, r.diastolic)}</p>
+                  </div>
+                  {r.heart_rate && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                      <Activity className="h-3 w-3" />
+                      {r.heart_rate} bpm
+                    </span>
+                  )}
                 </div>
-                 <div className="flex gap-1">
-                   <Button variant="ghost" size="icon" aria-label="Edit blood pressure" onClick={() => openEditVitals("bp", r)}><Pencil className="h-4 w-4" /></Button>
-                   <AlertDialog>
-                     <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete blood pressure"><Trash2 className="h-4 w-4" /></Button>} />
-                     <AlertDialogContent>
-                       <AlertDialogHeader>
-                         <AlertDialogTitle>Delete Blood Pressure Reading</AlertDialogTitle>
-                         <AlertDialogDescription>
-                           Are you sure you want to delete this blood pressure reading? This action cannot be undone.
-                         </AlertDialogDescription>
-                       </AlertDialogHeader>
-                       <div className="flex justify-end gap-2">
-                         <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
-                         <AlertDialogAction render={<Button variant="destructive" onClick={async () => { await supabase.from("blood_pressure").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-pressure"] }); }} />}>Delete</AlertDialogAction>
-                       </div>
-                     </AlertDialogContent>
-                   </AlertDialog>
-                 </div>
+                <div className="flex flex-col items-end gap-1">
+                  <p className="text-xs text-muted-foreground">{format(parseISO(r.reading_date), "MMM d, yyyy")}{r.reading_time && ` · ${r.reading_time.slice(0,5)}`}</p>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" aria-label="Edit blood pressure" onClick={() => openEditVitals("bp", r)}><Pencil className="h-4 w-4" /></Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete blood pressure"><Trash2 className="h-4 w-4" /></Button>} />
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Blood Pressure Reading</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this blood pressure reading? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="flex justify-end gap-2">
+                          <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction render={<Button variant="destructive" onClick={async () => { await supabase.from("blood_pressure").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-pressure"] }); }} />}>Delete</AlertDialogAction>
+                        </div>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}
