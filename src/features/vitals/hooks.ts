@@ -26,7 +26,12 @@ export function useCreateBloodPressure() {
     mutationFn: async (values: BloodPressureFormData) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Not authenticated");
-      const { data, error } = await supabase.from("blood_pressure").insert({ ...values, user_id: user.user.id }).select().single();
+      const { data, error } = await supabase.from("blood_pressure").insert({
+        ...values,
+        user_id: user.user.id,
+        reading_time: values.reading_time || null,
+        notes: values.notes || null,
+      }).select().single();
       if (error) throw error;
       return data;
     },
@@ -51,7 +56,7 @@ export function useCreateHba1c() {
     mutationFn: async (values: Hba1cFormData) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Not authenticated");
-      const { data, error } = await supabase.from("hba1c").insert({ ...values, user_id: user.user.id }).select().single();
+      const { data, error } = await supabase.from("hba1c").insert({ ...values, user_id: user.user.id, notes: values.notes || null }).select().single();
       if (error) throw error;
       return data;
     },
@@ -76,7 +81,11 @@ export function useCreateWeight() {
     mutationFn: async (values: WeightFormData) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Not authenticated");
-      const { data, error } = await supabase.from("weight_log").insert({ ...values, user_id: user.user.id }).select().single();
+      const { data, error } = await supabase.from("weight_log").insert({
+        ...values,
+        user_id: user.user.id,
+        notes: values.notes || null,
+      }).select().single();
       if (error) throw error;
       return data;
     },
@@ -114,7 +123,11 @@ export function useCreateBloodPanel() {
     mutationFn: async (values: BloodPanelFormData) => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Not authenticated");
-      const { data, error } = await supabase.from("blood_panel").insert({ ...cleanPanelFields(values), user_id: user.user.id }).select().single();
+      const { data, error } = await supabase.from("blood_panel").insert({
+        ...cleanPanelFields(values),
+        user_id: user.user.id,
+        notes: values.notes || null,
+      }).select().single();
       if (error) throw error;
       return data;
     },
@@ -126,7 +139,11 @@ export function useUpdateBloodPressure() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...values }: BloodPressureFormData & { id: string }) => {
-      const { error } = await supabase.from("blood_pressure").update(values).eq("id", id);
+      const { error } = await supabase.from("blood_pressure").update({
+        ...values,
+        reading_time: values.reading_time || null,
+        notes: values.notes || null,
+      }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["blood-pressure"] }),
@@ -137,7 +154,10 @@ export function useUpdateHba1c() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...values }: Hba1cFormData & { id: string }) => {
-      const { error } = await supabase.from("hba1c").update(values).eq("id", id);
+      const { error } = await supabase.from("hba1c").update({
+        ...values,
+        notes: values.notes || null,
+      }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["hba1c"] }),
@@ -148,7 +168,10 @@ export function useUpdateWeight() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...values }: WeightFormData & { id: string }) => {
-      const { error } = await supabase.from("weight_log").update(values).eq("id", id);
+      const { error } = await supabase.from("weight_log").update({
+        ...values,
+        notes: values.notes || null,
+      }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["weight"] }),
@@ -159,7 +182,10 @@ export function useUpdateBloodPanel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...values }: BloodPanelFormData & { id: string }) => {
-      const { error } = await supabase.from("blood_panel").update(cleanPanelFields(values)).eq("id", id);
+      const { error } = await supabase.from("blood_panel").update({
+        ...cleanPanelFields(values),
+        notes: values.notes || null,
+      }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["blood-panel"] }),
