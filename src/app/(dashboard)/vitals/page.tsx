@@ -87,7 +87,7 @@ export default function VitalsPage() {
       setErrors(Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v?.[0] ?? ""])));
       return;
     }
-    createBP.mutate(result.data, {
+    createBP.mutate({ ...result.data, reading_time: result.data.reading_time || undefined, notes: result.data.notes || undefined }, {
       onSuccess: () => { toast.success("Reading saved"); setOpen(false); },
       onError: (err) => toast.error(err.message),
     });
@@ -120,7 +120,7 @@ export default function VitalsPage() {
     if (editType === "bp") {
       const r = bloodPressureSchema.safeParse(bpForm);
       if (!r.success) { toast.error("Invalid values"); return; }
-      updateBP.mutate({ id: editId, ...r.data }, { onSuccess: () => { toast.success("BP updated"); setEditOpen(false); }, onError: (err) => toast.error(err.message) });
+      updateBP.mutate({ id: editId, ...r.data, reading_time: r.data.reading_time || undefined, notes: r.data.notes || undefined }, { onSuccess: () => { toast.success("BP updated"); setEditOpen(false); }, onError: (err) => toast.error(err.message) });
     } else if (editType === "weight") {
       const r = weightSchema.safeParse(weightForm);
       if (!r.success) { toast.error("Invalid values"); return; }
