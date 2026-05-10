@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
+import type { BloodSugar } from "@/types/database";
 
 const MEAL_SLOT_ORDER: string[] = [
   "before_breakfast",
@@ -215,7 +216,7 @@ export default function BloodSugarPage() {
       </div>
 
       {readings && readings.length > 0 && (
-        <SummaryCard summary={summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings[1])} />
+        <SummaryCard summary={summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings.length > 1 ? readings[1] : undefined)} />
       )}
 
       {isLoading ? (
@@ -229,12 +230,12 @@ export default function BloodSugarPage() {
           </CardContent>
         </Card>
       ) : (() => {
-        const grouped: Record<string, any[]> = readings.reduce((acc: Record<string, any[]>, r: any) => {
+        const grouped: Record<string, BloodSugar[]> = readings.reduce((acc: Record<string, BloodSugar[]>, r: BloodSugar) => {
           const date = r.reading_date;
           if (!acc[date]) acc[date] = [];
           acc[date].push(r);
           return acc;
-        }, {} as Record<string, any[]>);
+        }, {} as Record<string, BloodSugar[]>);
 
         const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 

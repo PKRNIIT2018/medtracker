@@ -45,14 +45,16 @@ export interface MedicationIntake {
   created_at: string
 }
 
+export type MealSlot = 'before_breakfast' | 'after_breakfast' | 'before_lunch' | 'after_lunch' | 'before_dinner' | 'after_dinner';
+
 export interface BloodSugar {
   id: string
   user_id: string
-  level: number
-  meal_slot: 'before_breakfast' | 'after_breakfast' | 'before_lunch' | 'after_lunch' | 'before_dinner' | 'after_dinner' | 'fasting' | 'bedtime'
+  reading_date: string
+  reading_time: string | null
+  meal_slot: MealSlot
+  level_mgdl: number
   notes: string | null
-  date: string
-  time: string
   created_at: string
   deleted_at: string | null
 }

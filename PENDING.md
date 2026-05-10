@@ -317,19 +317,16 @@ P3 (Nice to have) → Phase 7 + Phase 8 + Phase 9  (consistency + visual polish 
 - `useBloodSugarReadings` fetches all non-deleted readings without `.eq("user_id", user.id)`. Data isolation depends entirely on Supabase RLS. If RLS is dropped or misconfigured (e.g., during a schema migration, branch reset, or policy disable), every user sees every other user's readings. Both insert and update/delete hooks already reference the authenticated user — the read path should be consistent.
 - **Fix:** Added `const { data: user } = await supabase.auth.getUser();` and `.eq("user_id", user.user.id)` to the query in `useBloodSugarReadings`.
 
-### Medium
+### Medium — FIXED
 
 **`readings[1]` may be undefined in summary**
-- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:218`
-- `summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings[1])` passes `readings[1]` which is `undefined` when there is exactly one reading. The summary function must handle `undefined` or the page should guard against it.
+- **Fix:** Guarded with `readings.length > 1 ? readings[1] : undefined`
 
 **Heavy `any` usage defeats type safety**
-- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:232-248`
-- The grouping/sorting/render path uses `any` throughout (`Record<string, any[]>`, `r: any`). If the DB shape changes (column rename, type change), these silently break at runtime instead of surfacing at compile time.
+- **Fix:** Replaced `Record<string, any[]>` and `r: any` with `Record<string, BloodSugar[]>` and `r: BloodSugar` using the corrected `BloodSugar` interface from `src/types/database.ts` (which was also fixed to match actual DB columns: `level_mgdl`/`reading_date`/`reading_time` instead of wrong `level`/`date`/`time`).
 
 **`0` passes validation as a blood sugar level**
-- **File:** `src/features/blood-sugar/schema.ts:7`
-- `level_mgdl` defaults to `0` in state and the schema permits it (`z.number().min(0)`). A level of 0 mg/dL is biologically impossible and would corrupt the user's data. Should be `min(1)`.
+- **Fix:** Changed `z.number().min(0)` to `z.number().min(1)` in `src/features/blood-sugar/schema.ts`.
 
 ### Low
 
