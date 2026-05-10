@@ -70,13 +70,16 @@ export interface Vitals {
   deleted_at: string | null
 }
 
+export type BeverageType = 'water' | 'tea' | 'coffee' | 'beer' | 'alcohol';
+
 export interface WaterIntake {
   id: string
   user_id: string
   amount_ml: number
-  date: string
-  time: string
+  entry_date: string
+  beverage_type: BeverageType
   created_at: string
+  deleted_at: string | null
 }
 
 export interface Activity {
