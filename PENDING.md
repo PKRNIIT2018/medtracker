@@ -305,3 +305,52 @@ P3 (Nice to have) → Phase 7 + Phase 8 + Phase 9  (consistency + visual polish 
 ```
 
 **Total implementation time: ~9.25 hours**
+
+---
+
+## Audit: Blood Sugar Page — Flaws & Vulnerabilities
+
+### High — FIXED
+
+**Missing `user_id` filter on read queries**
+- **File:** `src/features/blood-sugar/hooks.ts:14`
+- `useBloodSugarReadings` fetches all non-deleted readings without `.eq("user_id", user.id)`. Data isolation depends entirely on Supabase RLS. If RLS is dropped or misconfigured (e.g., during a schema migration, branch reset, or policy disable), every user sees every other user's readings. Both insert and update/delete hooks already reference the authenticated user — the read path should be consistent.
+- **Fix:** Added `const { data: user } = await supabase.auth.getUser();` and `.eq("user_id", user.user.id)` to the query in `useBloodSugarReadings`.
+
+### Medium
+
+**`readings[1]` may be undefined in summary**
+- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:218`
+- `summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings[1])` passes `readings[1]` which is `undefined` when there is exactly one reading. The summary function must handle `undefined` or the page should guard against it.
+
+**Heavy `any` usage defeats type safety**
+- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:232-248`
+- The grouping/sorting/render path uses `any` throughout (`Record<string, any[]>`, `r: any`). If the DB shape changes (column rename, type change), these silently break at runtime instead of surfacing at compile time.
+
+**`0` passes validation as a blood sugar level**
+- **File:** `src/features/blood-sugar/schema.ts:7`
+- `level_mgdl` defaults to `0` in state and the schema permits it (`z.number().min(0)`). A level of 0 mg/dL is biologically impossible and would corrupt the user's data. Should be `min(1)`.
+
+### Low
+
+**Server error messages exposed to user via toast**
+- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:76`
+- `toast.error(err.message)` may leak internal details. Log server-side, show a generic message to the user.
+
+**Date format will crash on invalid input**
+- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:258`
+- `format(new Date(date), ...)` throws on invalid dates. Use `parseISO` from date-fns or wrap in try/catch.
+
+**No loading skeleton**
+- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:222`
+- Shows plain `"Loading..."` text instead of a skeleton matching the grouped card layout.
+
+**No error state for failed queries**
+- If `useBloodSugarReadings` errors, the user sees a blank page. No error banner, retry button, or fallback UI.
+
+**Duplicate form markup between add/edit dialogs**
+- **File:** `src/app/(dashboard)/blood-sugar/page.tsx:136-171` and `:178-212`
+- ~40 lines of near-identical JSX. Extract into a shared `BloodSugarForm` component.
+
+**`reading_time` stored as empty string instead of `null`**
+- Schema marks `reading_time` as optional, but the form always sends `""`. Inconsistent with `notes` pattern which passes through as-is.

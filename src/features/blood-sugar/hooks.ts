@@ -8,9 +8,13 @@ export function useBloodSugarReadings() {
   return useQuery({
     queryKey: ["blood-sugar"],
     queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("blood_sugar")
         .select("*")
+        .eq("user_id", user.user.id)
         .is("deleted_at", null)
         .order("reading_date", { ascending: false })
         .limit(50);
