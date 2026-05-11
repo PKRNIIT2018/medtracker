@@ -61,7 +61,7 @@ export function usePushNotifications() {
       // Subscribe to push
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as BufferSource,
       });
 
       // Save to database (dedup by endpoint)

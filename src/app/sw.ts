@@ -39,7 +39,7 @@ self.addEventListener("push", (event: PushEvent) => {
     }
   }
 
-  const options: NotificationOptions = {
+  const options: NotificationOptions & Record<string, unknown> = {
     body: data.body ?? "Time for your health reminder",
     icon: data.icon ?? "/icons/icon-192x192.png",
     badge: "/icons/icon-192x192.png",
@@ -58,15 +58,13 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
   const urlToOpen = event.notification.data?.url ?? "/";
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      // Focus existing window if found
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
       for (const client of windowClients) {
         if (client.url === urlToOpen && "focus" in client) {
           return client.focus();
         }
       }
-      // Otherwise open new window
-      return clients.openWindow(urlToOpen);
+      return self.clients.openWindow(urlToOpen);
     }),
   );
 });
