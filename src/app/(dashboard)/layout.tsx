@@ -40,13 +40,13 @@ const navGroups = [
       { href: "/vitals", label: "Vitals", icon: Heart },
       { href: "/water", label: "Water", icon: Droplets },
       { href: "/activity", label: "Activity", icon: ClipboardList },
+      { href: "/medication-log", label: "Today's Log", icon: ClipboardCheck },
     ],
   },
   {
     label: "Care",
     items: [
       { href: "/medications", label: "Medications", icon: Pill },
-      { href: "/medication-log", label: "Today's Log", icon: ClipboardCheck },
       { href: "/appointments", label: "Appointments", icon: Calendar },
       { href: "/medical-history", label: "Medical History", icon: ClipboardList },
     ],
