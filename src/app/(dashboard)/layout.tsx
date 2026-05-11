@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { PinGate, isPinVerified, clearPinSession, refreshPinSession } from "@/components/pin-gate";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const navGroups = [
   {
@@ -257,7 +258,7 @@ export default function DashboardLayout({
           </Button>
           <div className="flex-1" />
         </header>
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 lg:p-6"><ErrorBoundary>{children}</ErrorBoundary></main>
       </div>
     </div>
   );

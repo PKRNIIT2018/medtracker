@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Lock, AlertCircle } from "lucide-react";
-import bcrypt from "bcryptjs";
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
@@ -23,27 +21,6 @@ export function PinGate({ onUnlock }: PinGateProps) {
   const [attempts, setAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutEnd, setLockoutEnd] = useState<number | null>(null);
-  const [pinHash, setPinHash] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const supabase = createClient();
-
-  useEffect(() => {
-    async function fetchPinHash() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: settings } = await supabase
-          .from("user_settings")
-          .select("app_pin_hash")
-          .eq("user_id", user.id)
-          .single();
-        setPinHash(settings?.app_pin_hash || null);
-      }
-      setIsLoading(false);
-    }
-    fetchPinHash();
-  }, [supabase]);
-
   useEffect(() => {
     if (!isLocked || !lockoutEnd) return;
 
@@ -62,15 +39,21 @@ export function PinGate({ onUnlock }: PinGateProps) {
   }, [isLocked, lockoutEnd]);
 
   const handleVerify = useCallback(async () => {
-    if (pin.length !== 4 || !pinHash) return;
+    if (pin.length !== 4) return;
 
     setIsVerifying(true);
     setError("");
 
     try {
-      const isValid = await bcrypt.compare(pin, pinHash);
+      const res = await fetch("/api/pin/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPin: pin }),
+      });
 
-      if (isValid) {
+      const data = await res.json();
+
+      if (data.valid) {
         sessionStorage.setItem("pin_verified", "true");
         sessionStorage.setItem("pin_verified_at", Date.now().toString());
         setAttempts(0);
@@ -93,7 +76,7 @@ export function PinGate({ onUnlock }: PinGateProps) {
     } finally {
       setIsVerifying(false);
     }
-  }, [pin, pinHash, attempts, onUnlock]);
+  }, [pin, attempts, onUnlock]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -104,14 +87,6 @@ export function PinGate({ onUnlock }: PinGateProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [pin, isLocked, handleVerify]);
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-pulse">Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">

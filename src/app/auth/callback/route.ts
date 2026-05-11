@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { log, logError } from "@/lib/logger";
 
 const SAFE_REDIRECTS = new Set([
   "/dashboard",
@@ -31,10 +32,15 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
+
     if (!error) {
+      log("auth_callback_success", { redirectTo: next, origin });
       return NextResponse.redirect(`${origin}${next}`);
     }
+
+    logError("auth_callback_error", error, { origin });
   }
 
+  log("auth_callback_failed", { origin, hasCode: !!code });
   return NextResponse.redirect(`${origin}/login?error=Could not authenticate user`);
 }

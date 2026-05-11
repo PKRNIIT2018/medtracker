@@ -13,7 +13,7 @@ fi
 TODAY="$(date +%Y-%m-%d)"
 ROWS="$(git log --reverse --format="| %ad | \`%h\` | %s |" --date=format:"%Y-%m-%d" --all)"
 
-# Build new changelog section, base64-encode it to avoid quoting issues
+# Build new changelog section
 NEW_SECTION=$(cat <<EOF
 ## Change Log
 
@@ -29,9 +29,6 @@ EOF
 
 export DOC_PATH
 export NEW_SECTION
-
-TEMP=$(mktemp)
-trap 'rm -f "$TEMP"' EXIT
 
 python3 << 'PYEOF' || { echo "Error: Python script failed"; exit 1; }
 import os, sys

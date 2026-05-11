@@ -39,6 +39,7 @@ export interface MedicationIntake {
   dose_id: string | null
   taken_date: string
   taken_time: string | null
+  time_slot: string | null
   status: "taken" | "skipped" | "rescheduled"
   notes: string | null
   deleted_at: string | null

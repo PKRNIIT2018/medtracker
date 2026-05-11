@@ -1,31 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { MedicationFormData } from "./schema";
-
-const supabase = createClient();
-
-function cleanOptionalFields(values: MedicationFormData) {
-  return {
-    ...values,
-    active_substance: values.active_substance || null,
-    stock_count: values.stock_count ?? null,
-    ai_summary: values.ai_summary || null,
-  };
-}
+import * as repo from "./repository";
+import { cleanMedicationFields, todayDate, nowTime } from "./service";
 
 export function useMedications() {
   return useQuery({
     queryKey: ["medications"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("medications")
-        .select("*")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: repo.fetchMedications,
   });
 }
 
@@ -34,17 +16,10 @@ export function useCreateMedication() {
 
   return useMutation({
     mutationFn: async (values: MedicationFormData) => {
+      const supabase = createClient();
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from("medications")
-        .insert({ ...cleanOptionalFields(values), user_id: user.user.id })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return repo.createMedication(cleanMedicationFields(values), user.user.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["medications"] });
@@ -57,12 +32,7 @@ export function useUpdateMedication() {
 
   return useMutation({
     mutationFn: async ({ id, ...values }: MedicationFormData & { id: string }) => {
-      const { error } = await supabase
-        .from("medications")
-        .update(cleanOptionalFields(values))
-        .eq("id", id);
-
-      if (error) throw error;
+      await repo.updateMedication(id, cleanMedicationFields(values));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["medications"] });
@@ -74,16 +44,8 @@ export function useToggleMedication() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      is_active,
-    }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from("medications")
-        .update({ is_active })
-        .eq("id", id);
-
-      if (error) throw error;
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      await repo.toggleMedication(id, is_active);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["medications"] });
@@ -96,12 +58,7 @@ export function useDeleteMedication() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("medications")
-        .update({ deleted_at: new Date().toISOString() })
-        .eq("id", id);
-
-      if (error) throw error;
+      await repo.softDeleteMedication(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["medications"] });
@@ -109,23 +66,10 @@ export function useDeleteMedication() {
   });
 }
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export function useTodayIntake() {
   return useQuery({
     queryKey: ["medication-intake", todayDate()],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("medication_intake")
-        .select("*, medications!inner(name, strength, type, time_of_day)")
-        .eq("taken_date", todayDate())
-        .is("deleted_at", null);
-
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => repo.fetchTodayIntake(todayDate()),
   });
 }
 
@@ -135,49 +79,28 @@ export function useLogIntake() {
   return useMutation({
     mutationFn: async ({
       medication_id,
+      time_slot,
       status,
       notes,
     }: {
       medication_id: string;
+      time_slot: string;
       status: "taken" | "skipped";
       notes?: string;
     }) => {
+      const supabase = createClient();
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Not authenticated");
 
-      const td = todayDate();
-      const now = new Date().toISOString().slice(11, 16);
-
-      const payload = {
+      await repo.upsertIntake({
         user_id: user.user.id,
         medication_id,
-        taken_date: td,
-        taken_time: now,
+        taken_date: todayDate(),
+        taken_time: nowTime(),
+        time_slot,
         status,
         notes: notes ?? null,
-      };
-
-      const { data: existing } = await supabase
-        .from("medication_intake")
-        .select("id")
-        .eq("medication_id", medication_id)
-        .eq("taken_date", td)
-        .eq("notes", notes ?? "__NULL__")
-        .is("deleted_at", null)
-        .maybeSingle();
-
-      if (existing) {
-        const { error } = await supabase
-          .from("medication_intake")
-          .update(payload)
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("medication_intake")
-          .insert(payload);
-        if (error) throw error;
-      }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["medication-intake"] });

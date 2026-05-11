@@ -280,7 +280,7 @@ export default function MedicationsPage() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     {med.time_of_day.map((slot: string) => {
                       const entry = todayIntake?.find(
-                        (i) => i.medication_id === med.id && i.notes === slot
+                        (i) => i.medication_id === med.id && i.time_slot === slot
                       );
                       const isTaken = entry?.status === "taken";
                       const isSkipped = entry?.status === "skipped";
@@ -293,8 +293,8 @@ export default function MedicationsPage() {
                           onClick={() =>
                             logIntake.mutate({
                               medication_id: med.id,
+                              time_slot: slot,
                               status: isTaken ? "skipped" : "taken",
-                              notes: slot,
                             })
                           }
                           className={cn(
