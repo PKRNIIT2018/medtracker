@@ -85,7 +85,7 @@ export default function VitalsPage() {
     });
   }
 
-  function openEditVitals(type: string, row: { id: string; reading_date: string; reading_time?: string | null; notes?: string | null; systolic?: number; diastolic?: number; heart_rate?: number | null; weight_kg?: number }) {
+  function openEditVitals(type: string, row: any) {
     setEditType(type);
     setEditId(row.id);
     if (type === "bp") {
