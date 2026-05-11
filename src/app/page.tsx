@@ -8,22 +8,29 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    const supabase = createClient();
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
 
     if (code) {
-      const supabase = createClient();
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (!error) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session) {
+          window.history.replaceState({}, "", "/");
           router.push("/dashboard");
         } else {
-          router.push("/login?error=Could not authenticate user");
+          supabase.auth.exchangeCodeForSession(code).then((result) => {
+            if (!result.error) {
+              window.history.replaceState({}, "", "/");
+              router.push("/dashboard");
+            } else {
+              router.push("/login?error=" + encodeURIComponent(result.error.message));
+            }
+          });
         }
       });
       return;
     }
 
-    const supabase = createClient();
     supabase.auth.getSession().then(({ data }) => {
       if (data?.session) {
         router.push("/dashboard");
