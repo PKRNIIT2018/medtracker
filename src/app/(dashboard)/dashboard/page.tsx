@@ -127,7 +127,7 @@ export default function DashboardPage() {
     return { label, value: avg };
   });
 
-  const abnormalSugar = sugarReadings?.find((r) => getSugarLevel(r.level) !== "normal");
+  const latestSugarReading = sugarReadings?.[0];
   const abnormalBP = bpReadings?.find((r) => getBpStatusLabel(r.systolic, r.diastolic) !== "Normal");
   const upcomingAppts = appointments ?? [];
 
@@ -142,19 +142,24 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {(abnormalSugar || abnormalBP || upcomingAppts.length > 0) && (
+      {(latestSugarReading || abnormalBP || upcomingAppts.length > 0) && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             Things to note
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {abnormalSugar && (
-              <Card className="border-l-4 border-l-red-400">
+            {latestSugarReading && (
+              <Card className={cn("border-l-4", getSugarLevel(latestSugarReading.level) === "normal" ? "border-l-green-500" : "border-l-red-400")}>
                 <CardContent className="py-3">
                   <p className="text-xs text-muted-foreground">Blood Sugar</p>
-                  <p className="text-sm font-medium">Latest reading: {abnormalSugar.level} mmol/L — <span className="text-red-500">{getSugarLevel(abnormalSugar.level) === "low" ? "Low" : "High"}</span></p>
-                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(abnormalSugar.reading_date), "MMM d, yyyy")}</p>
+                  <p className="text-sm font-medium">
+                    Latest reading: {latestSugarReading.level} mmol/L
+                    {getSugarLevel(latestSugarReading.level) !== "normal" && (
+                      <> — <span className="text-red-500">{getSugarLevel(latestSugarReading.level) === "low" ? "Low" : "High"}</span></>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(latestSugarReading.reading_date), "MMM d, yyyy")}</p>
                 </CardContent>
               </Card>
             )}
