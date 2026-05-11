@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMedications, useCreateMedication, useUpdateMedication, useToggleMedication, useDeleteMedication, useTodayIntake, useLogIntake } from "@/features/medications/hooks";
+import { useMedications, useCreateMedication, useUpdateMedication, useToggleMedication, useDeleteMedication } from "@/features/medications/hooks";
 import { medicationSchema, type MedicationFormData } from "@/features/medications/schema";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pill, Pencil, Trash2, Package, Check, X, AlertTriangle } from "lucide-react";
+import { Plus, Pill, Pencil, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Medication } from "@/types/database";
@@ -48,8 +48,6 @@ export default function MedicationsPage() {
   const updateMedication = useUpdateMedication();
   const toggleMedication = useToggleMedication();
   const deleteMedication = useDeleteMedication();
-  const { data: todayIntake } = useTodayIntake();
-  const logIntake = useLogIntake();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -247,77 +245,6 @@ export default function MedicationsPage() {
       </div>
       </div>
 
-      {!isLoading && medications && medications.some((m) => m.is_active) && (
-        <Card>
-          <CardHeader className="pb-3 border-b">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Today&apos;s Log</CardTitle>
-              <span className="text-sm text-muted-foreground">
-                {(() => {
-                  const totalSlots = medications
-                    .filter((m) => m.is_active)
-                    .reduce((sum, m) => sum + m.time_of_day.length, 0);
-                  const done = todayIntake?.filter((i) => i.status === "taken").length ?? 0;
-                  const skipped = todayIntake?.filter((i) => i.status === "skipped").length ?? 0;
-                  const skippedText = skipped > 0 ? ` + ${skipped} skipped` : "";
-                  return `${done} of ${totalSlots} taken${skippedText}`;
-                })()}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {medications
-              .filter((m) => m.is_active)
-              .map((med) => (
-                <div
-                  key={med.id}
-                  className="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate">{med.name}</p>
-                    <p className="text-xs text-muted-foreground">{med.strength} - {med.time_of_day.length}x daily</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {med.time_of_day.map((slot: string) => {
-                      const entry = todayIntake?.find(
-                        (i) => i.medication_id === med.id && i.time_slot === slot
-                      );
-                      const isTaken = entry?.status === "taken";
-                      const isSkipped = entry?.status === "skipped";
-
-                      return (
-                        <button
-                          key={slot}
-                          type="button"
-                          disabled={logIntake.isPending}
-                          onClick={() =>
-                            logIntake.mutate({
-                              medication_id: med.id,
-                              time_slot: slot,
-                              status: isTaken ? "skipped" : "taken",
-                            })
-                          }
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-150 min-w-[5rem] justify-center",
-                            isTaken && "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 shadow-sm",
-                            isSkipped && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                            !isTaken && !isSkipped && "bg-muted text-muted-foreground hover:bg-primary/15 hover:text-primary"
-                          )}
-                        >
-                          <span>{timeOfDayLabels[slot]}</span>
-                          {isTaken && <Check className="h-3 w-3" />}
-                          {isSkipped && <X className="h-3 w-3" />}
-                          {!isTaken && !isSkipped && <Plus className="h-3 w-3" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-          </CardContent>
-        </Card>
-      )}
-
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[1,2,3].map(i => <Card key={i}><CardHeader><div className="h-5 w-32 animate-pulse bg-muted rounded" /></CardHeader><CardContent><div className="h-4 w-48 animate-pulse bg-muted rounded" /></CardContent></Card>)}
@@ -344,9 +271,6 @@ export default function MedicationsPage() {
             </div>
             <div className="rounded-lg bg-accent/30 px-3 py-2">
               <span className="font-medium">{medications.filter((m) => m.stock_count != null && m.stock_count <= 5).length}</span> need refill
-            </div>
-            <div className="rounded-lg bg-green-100 dark:bg-green-900/20 px-3 py-2">
-              <span className="font-medium">{todayIntake?.filter((i) => i.status === "taken").length ?? 0}</span> taken today
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

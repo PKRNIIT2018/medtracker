@@ -20,6 +20,7 @@ import {
   FlaskConical,
   Lock,
   Calendar,
+  ClipboardCheck,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { PinGate, isPinVerified, clearPinSession, refreshPinSession } from "@/components/pin-gate";
@@ -45,6 +46,7 @@ const navGroups = [
     label: "Care",
     items: [
       { href: "/medications", label: "Medications", icon: Pill },
+      { href: "/medication-log", label: "Today's Log", icon: ClipboardCheck },
       { href: "/appointments", label: "Appointments", icon: Calendar },
       { href: "/medical-history", label: "Medical History", icon: ClipboardList },
     ],
