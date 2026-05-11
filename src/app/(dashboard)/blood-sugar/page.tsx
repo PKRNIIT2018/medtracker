@@ -54,7 +54,7 @@ export default function BloodSugarPage() {
       return data;
     },
   });
-  const sugarUnit = settings?.sugar_unit ?? "mg/dL";
+  const sugarUnit = settings?.sugar_unit ?? "mmol/L";
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

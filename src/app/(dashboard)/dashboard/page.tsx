@@ -13,7 +13,7 @@ import { Plus, Activity, Droplets, Heart, Pill, Calendar, AlertTriangle } from "
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { getBpBorderColor, getBpStatusLabel, getSugarLevel } from "@/lib/vitals-colors";
+import { getBpBorderColor, getBpStatusLabel, getSugarLevel, toDisplayUnit } from "@/lib/vitals-colors";
 
 const supabase = createClient();
 
@@ -85,10 +85,11 @@ export default function DashboardPage() {
   const { data: settings } = useQuery({
     queryKey: ["user-settings"],
     queryFn: async () => {
-      const { data } = await supabase.from("user_settings").select("daily_water_goal_ml").single();
-      return data;
+      const { data } = await supabase.from("user_settings").select("daily_water_goal_ml, sugar_unit").single();
+      return data ?? { daily_water_goal_ml: null, sugar_unit: "mmol/L" };
     },
   });
+  const sugarUnit = settings?.sugar_unit ?? "mmol/L";
 
   const { data: appointments } = useQuery({
     queryKey: ["appointments"],
@@ -159,7 +160,7 @@ export default function DashboardPage() {
               <Card className="border-l-4 border-l-red-400">
                 <CardContent className="py-3">
                   <p className="text-xs text-muted-foreground">Blood Sugar</p>
-                  <p className="text-sm font-medium">Latest reading: {abnormalSugar.level_mgdl} mg/dL — <span className="text-red-500">{getSugarLevel(abnormalSugar.level_mgdl) === "low" ? "Low" : "High"}</span></p>
+                  <p className="text-sm font-medium">Latest reading: {toDisplayUnit(abnormalSugar.level_mgdl, sugarUnit)} {sugarUnit} — <span className="text-red-500">{getSugarLevel(abnormalSugar.level_mgdl) === "low" ? "Low" : "High"}</span></p>
                   <p className="text-xs text-muted-foreground mt-1">{format(parseISO(abnormalSugar.reading_date), "MMM d, yyyy")}</p>
                 </CardContent>
               </Card>
@@ -204,8 +205,8 @@ export default function DashboardPage() {
           {latestSugar ? (
             <>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">{latestSugar.level_mgdl}</span>
-                <span className="text-sm font-normal text-muted-foreground">mg/dL</span>
+                <span className="text-2xl font-bold">{toDisplayUnit(latestSugar.level_mgdl, sugarUnit)}</span>
+                <span className="text-sm font-normal text-muted-foreground">{sugarUnit}</span>
                 {sugarTrend && <span className={cn("text-sm font-medium", sugarTrend === " up" ? "text-red-500" : sugarTrend === " down" ? "text-green-500" : "text-muted-foreground")} aria-label={`Trend: ${sugarTrend.trim()}`}>{sugarTrend}</span>}
               </div>
               <p className="text-xs text-muted-foreground">
