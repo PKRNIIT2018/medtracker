@@ -16,11 +16,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { buttonVariants } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Sun, Moon, Monitor, Plus, Trash2, Calendar, Lock, Check } from "lucide-react";
+import { Sun, Moon, Monitor, Plus, Trash2, Calendar, Lock, Check, Loader2 } from "lucide-react";
 import bcrypt from "bcryptjs";
 import { format } from "date-fns";
 import { MfaEnrollment } from "@/components/mfa-enrollment";
 import { MfaManagement } from "@/components/mfa-management";
+import { cn } from "@/lib/utils";
 
 const supabase = createClient();
 
@@ -37,7 +38,7 @@ export default function SettingsPage() {
   const [apptForm, setApptForm] = useState({ title: "", doctor_name: "", appointment_date: format(new Date(), "yyyy-MM-dd"), appointment_time: "", location: "", notes: "" });
   const [mfaKey, setMfaKey] = useState(0);
 
-  const { data: settings } = useQuery({
+  const { data: settings, isLoading: settingsLoading } = useQuery({
     queryKey: ["user-settings"],
     queryFn: async () => {
       const { data } = await supabase.from("user_settings").select("*").single();
@@ -177,23 +178,32 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Full Name</Label>
-                <Input defaultValue={settings?.full_name ?? ""} placeholder="John Doe"
-                  onBlur={(e) => updateSettings.mutate({ full_name: e.target.value || null })} />
+                <div className="relative">
+                  <Input defaultValue={settings?.full_name ?? ""} placeholder="John Doe"
+                    onBlur={(e) => updateSettings.mutate({ full_name: e.target.value || null })} />
+                  {updateSettings.isPending && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>ID Card Number</Label>
-                <Input defaultValue={settings?.id_card_number ?? ""} placeholder="e.g. A12345678"
-                  onBlur={(e) => updateSettings.mutate({ id_card_number: e.target.value || null })} />
+                <div className="relative">
+                  <Input defaultValue={settings?.id_card_number ?? ""} placeholder="e.g. A12345678"
+                    onBlur={(e) => updateSettings.mutate({ id_card_number: e.target.value || null })} />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Doctor&apos;s Name</Label>
-                <Input defaultValue={settings?.doctor_name ?? ""} placeholder="Dr. Smith"
-                  onBlur={(e) => updateSettings.mutate({ doctor_name: e.target.value || null })} />
+                <div className="relative">
+                  <Input defaultValue={settings?.doctor_name ?? ""} placeholder="Dr. Smith"
+                    onBlur={(e) => updateSettings.mutate({ doctor_name: e.target.value || null })} />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
-                <Textarea defaultValue={settings?.description ?? ""} placeholder="Allergies, conditions, notes for your doctor..." rows={4}
-                  onBlur={(e) => updateSettings.mutate({ description: e.target.value || null })} />
+                <div className="relative">
+                  <Textarea defaultValue={settings?.description ?? ""} placeholder="Allergies, conditions, notes for your doctor..." rows={4}
+                    onBlur={(e) => updateSettings.mutate({ description: e.target.value || null })} />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -231,16 +241,21 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-3">
               {appointments.map((a) => (
-                <Card key={a.id}>
+                <Card key={a.id} className="border-l-4 border-l-primary/40">
                   <CardContent className="flex items-start justify-between py-4">
-                    <div className="space-y-1">
-                      <p className="font-medium">{a.title}</p>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{a.appointment_date}{a.appointment_time && ` ${a.appointment_time}`}</span>
-                        {a.doctor_name && <span>{a.doctor_name}</span>}
-                        {a.location && <span>{a.location}</span>}
+                    <div className="flex items-start gap-3">
+                      <span className="inline-flex items-center justify-center rounded-full bg-primary/10 p-2 mt-0.5">
+                        <Calendar className="h-4 w-4 text-primary" />
+                      </span>
+                      <div className="space-y-1">
+                        <p className="font-medium">{a.title}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{a.appointment_date}{a.appointment_time && ` ${a.appointment_time}`}</span>
+                          {a.doctor_name && <span>{a.doctor_name}</span>}
+                          {a.location && <span>{a.location}</span>}
+                        </div>
+                        {a.notes && <p className="text-xs text-muted-foreground pt-1">{a.notes}</p>}
                       </div>
-                      {a.notes && <p className="text-xs text-muted-foreground pt-1">{a.notes}</p>}
                     </div>
                      <AlertDialog>
                        <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete appointment"><Trash2 className="h-4 w-4" /></Button>} />
@@ -362,9 +377,10 @@ export default function SettingsPage() {
                             setCurrentPin(e.target.value.replace(/\D/g, ""));
                             setPinVerifyError("");
                           }}
-                          placeholder="Enter current PIN"
-                          className="text-center tracking-[0.5em] font-mono"
+                          placeholder="••••"
+                          className="text-center tracking-[0.5em] font-mono text-lg"
                         />
+                        {currentPin && <div className="flex justify-center gap-2 mt-1">{currentPin.split("").map((_, i) => (<span key={i} className="h-2.5 w-2.5 rounded-full bg-primary block" />))}</div>}
                       </div>
                       {pinVerifyError && (
                         <p className="text-sm text-destructive">{pinVerifyError}</p>
@@ -387,9 +403,10 @@ export default function SettingsPage() {
                             pattern="[0-9]*"
                             value={pinCode}
                             onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))}
-                            placeholder="4 digits"
-                            className="text-center tracking-[0.5em] font-mono"
+                            placeholder="••••"
+                            className="text-center tracking-[0.5em] font-mono text-lg"
                           />
+                          {pinCode && <div className="flex justify-center gap-2 mt-1">{pinCode.split("").map((_, i) => (<span key={i} className="h-2.5 w-2.5 rounded-full bg-primary block" />))}</div>}
                         </div>
                         <div className="space-y-2">
                           <Label>Confirm PIN</Label>
@@ -400,13 +417,17 @@ export default function SettingsPage() {
                             pattern="[0-9]*"
                             value={pinConfirm}
                             onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ""))}
-                            placeholder="4 digits"
-                            className="text-center tracking-[0.5em] font-mono"
+                            placeholder="••••"
+                            className="text-center tracking-[0.5em] font-mono text-lg"
                           />
+                          {pinConfirm && <div className="flex justify-center gap-2 mt-1">{pinConfirm.split("").map((_, i) => (<span key={i} className="h-2.5 w-2.5 rounded-full bg-primary block" />))}</div>}
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button onClick={handleChangePin}>Change PIN</Button>
+                        <Button onClick={handleChangePin} disabled={updateSettings.isPending}>
+                          {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                          Change PIN
+                        </Button>
                         <Button variant="outline" onClick={cancelChangePin}>Cancel</Button>
                       </div>
                     </div>
@@ -436,8 +457,10 @@ export default function SettingsPage() {
                         pattern="[0-9]*"
                         value={pinCode}
                         onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))}
-                        placeholder="4 digits"
+                        placeholder="••••"
+                        className="text-center tracking-[0.5em] font-mono text-lg"
                       />
+                      {pinCode && <div className="flex justify-center gap-2 mt-1">{pinCode.split("").map((_, i) => (<span key={i} className="h-2.5 w-2.5 rounded-full bg-primary block" />))}</div>}
                     </div>
                     <div className="space-y-2">
                       <Label>Confirm PIN</Label>
@@ -448,11 +471,16 @@ export default function SettingsPage() {
                         pattern="[0-9]*"
                         value={pinConfirm}
                         onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ""))}
-                        placeholder="4 digits"
+                        placeholder="••••"
+                        className="text-center tracking-[0.5em] font-mono text-lg"
                       />
+                      {pinConfirm && <div className="flex justify-center gap-2 mt-1">{pinConfirm.split("").map((_, i) => (<span key={i} className="h-2.5 w-2.5 rounded-full bg-primary block" />))}</div>}
                     </div>
                   </div>
-                  <Button onClick={handleSetPin}>Set PIN</Button>
+                  <Button onClick={handleSetPin} disabled={updateSettings.isPending}>
+                    {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Set PIN
+                  </Button>
                 </div>
               )}
             </CardContent>

@@ -12,11 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
-import { Plus, ClipboardList, Trash2 } from "lucide-react";
+import { Plus, ClipboardList, Trash2, Heart, Scissors, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { parseISO, format } from "date-fns";
+import { cn } from "@/lib/utils";
 
-const categoryLabels: Record<string, string> = { condition: "Condition", surgery: "Surgery", allergy: "Allergy" };
-const categoryColors: Record<string, "default" | "secondary" | "destructive"> = { condition: "default", surgery: "secondary", allergy: "destructive" };
+const categoryMeta: Record<string, { label: string; variant: "default" | "secondary" | "destructive"; icon: React.ElementType }> = {
+  condition: { label: "Condition", variant: "default", icon: Heart },
+  surgery: { label: "Surgery", variant: "secondary", icon: Scissors },
+  allergy: { label: "Allergy", variant: "destructive", icon: AlertTriangle },
+};
 
 export default function MedicalHistoryPage() {
   const { data: entries, isLoading } = useMedicalHistory();
@@ -50,7 +55,7 @@ export default function MedicalHistoryPage() {
                 <Select value={category} onValueChange={(v) => v && setCategory(v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(categoryLabels).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
+                    {Object.entries(categoryMeta).map(([k, v]) => (<SelectItem key={k} value={k}>{v.label}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
@@ -63,22 +68,35 @@ export default function MedicalHistoryPage() {
         </Dialog>
       </div>
 
-      {isLoading ? <p className="text-muted-foreground">Loading...</p> : !entries?.length ? (
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1,2,3].map(i => <Card key={i}><CardContent className="h-16 animate-pulse bg-muted rounded-lg" /></Card>)}
+        </div>
+      ) : !entries?.length ? (
         <Card><CardContent className="flex flex-col items-center gap-4 py-12">
           <ClipboardList className="h-12 w-12 text-muted-foreground" />
-          <p className="text-muted-foreground">No conditions, surgeries, or allergies recorded yet. Track your medical history to stay informed during doctor visits.</p>
+          <p className="text-muted-foreground text-center">No conditions, surgeries, or allergies recorded yet. Track your medical history to stay informed during doctor visits.</p>
           <Button variant="outline" onClick={() => setOpen(true)}>Add your first entry</Button>
         </CardContent></Card>
       ) : (
         <div className="space-y-3">
-          {entries.map((e) => (
+          {entries.map((e) => {
+            const meta = categoryMeta[e.category] ?? categoryMeta.condition;
+            const Icon = meta.icon;
+            return (
             <Card key={e.id}>
               <CardContent className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-3">
-                  <Badge variant={categoryColors[e.category] || "default"}>{categoryLabels[e.category]}</Badge>
+                  <span className="inline-flex items-center justify-center rounded-full bg-muted p-2">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                  <Badge variant={meta.variant}>{meta.label}</Badge>
                   <div>
                     <p className="font-medium">{e.title}</p>
-                    <p className="text-xs text-muted-foreground">{e.event_date}{e.description && ` — ${e.description}`}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {e.event_date ? format(parseISO(e.event_date), "MMM d, yyyy") : ""}
+                      {e.description && ` — ${e.description}`}
+                    </p>
                   </div>
                 </div>
                  <AlertDialog>
@@ -87,7 +105,7 @@ export default function MedicalHistoryPage() {
                      <AlertDialogHeader>
                        <AlertDialogTitle>Delete Entry</AlertDialogTitle>
                        <AlertDialogDescription>
-                         Are you sure you want to delete this medical history entry? This action cannot be undone.
+                         Are you sure you want to delete this medical history entry? This cannot be undone.
                        </AlertDialogDescription>
                      </AlertDialogHeader>
                      <div className="flex justify-end gap-2">
@@ -98,7 +116,8 @@ export default function MedicalHistoryPage() {
                  </AlertDialog>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

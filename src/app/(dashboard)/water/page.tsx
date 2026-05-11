@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useWaterEntries, useAddWater } from "@/features/water/hooks";
+import type { WaterIntake } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,17 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { buttonVariants } from "@/components/ui/button";
-import { Droplets, Coffee, Beer, Wine, Plus, CupSoda } from "lucide-react";
+import { Droplets, Coffee, Beer, Wine, Plus, CupSoda, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { format, parseISO, isToday, isYesterday } from "date-fns";
 import type { BeverageType } from "@/types/database";
 
-const BEVERAGES: { type: BeverageType; label: string; icon: typeof Droplets; color: string; bgColor: string; defaultAmount: number }[] = [
-  { type: "water", label: "Water", icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-100 dark:bg-blue-900/30", defaultAmount: 250 },
-  { type: "tea", label: "Tea", icon: CupSoda, color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", defaultAmount: 250 },
-  { type: "coffee", label: "Coffee", icon: Coffee, color: "text-amber-700", bgColor: "bg-amber-100 dark:bg-amber-900/30", defaultAmount: 300 },
-  { type: "beer", label: "Beer", icon: Beer, color: "text-yellow-500", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", defaultAmount: 330 },
-  { type: "alcohol", label: "Spirits", icon: Wine, color: "text-red-500", bgColor: "bg-red-100 dark:bg-red-900/30", defaultAmount: 45 },
+const BEVERAGES: { type: BeverageType; label: string; icon: typeof Droplets; color: string; bgColor: string; selectedBg: string; defaultAmount: number }[] = [
+  { type: "water", label: "Water", icon: Droplets, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-100 dark:bg-blue-900/30", selectedBg: "bg-blue-500 text-white shadow-sm", defaultAmount: 250 },
+  { type: "tea", label: "Tea", icon: CupSoda, color: "text-green-600 dark:text-green-400", bgColor: "bg-green-100 dark:bg-green-900/30", selectedBg: "bg-green-600 text-white shadow-sm", defaultAmount: 250 },
+  { type: "coffee", label: "Coffee", icon: Coffee, color: "text-amber-700 dark:text-amber-500", bgColor: "bg-amber-100 dark:bg-amber-900/30", selectedBg: "bg-amber-700 text-white shadow-sm", defaultAmount: 300 },
+  { type: "beer", label: "Beer", icon: Beer, color: "text-yellow-600 dark:text-yellow-500", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", selectedBg: "bg-yellow-500 text-white shadow-sm", defaultAmount: 330 },
+  { type: "alcohol", label: "Spirits", icon: Wine, color: "text-red-600 dark:text-red-400", bgColor: "bg-red-100 dark:bg-red-900/30", selectedBg: "bg-red-600 text-white shadow-sm", defaultAmount: 45 },
 ];
 
 const HYDRATION_RATIO: Record<BeverageType, number> = {
@@ -31,6 +33,27 @@ const HYDRATION_RATIO: Record<BeverageType, number> = {
 };
 
 const beverageMap = Object.fromEntries(BEVERAGES.map((b) => [b.type, b])) as Record<BeverageType, typeof BEVERAGES[number]>;
+
+function getProgressColor(pct: number) {
+  if (pct >= 100) return "bg-green-500";
+  if (pct >= 80) return "bg-green-400";
+  if (pct >= 50) return "bg-blue-400";
+  return "bg-blue-500";
+}
+
+function getMilestone(pct: number) {
+  if (pct >= 100) return "Goal reached!";
+  if (pct >= 75) return "Almost there!";
+  if (pct >= 50) return "Halfway there!";
+  if (pct >= 25) return "Good start!";
+  return null;
+}
+
+function formatDateHeader(date: string): string {
+  if (isToday(parseISO(date))) return "Today";
+  if (isYesterday(parseISO(date))) return "Yesterday";
+  return format(parseISO(date), "MMMM d, yyyy");
+}
 
 export default function WaterPage() {
   const { data: entries, isLoading } = useWaterEntries();
@@ -61,10 +84,12 @@ export default function WaterPage() {
     {} as Record<string, number>,
   );
 
+  const hasNonWater = Object.keys(breakdown).some((t) => t !== "water" && t !== "tea");
+
   function handleAdd(amount: number, beverage_type: BeverageType) {
     addWater.mutate({ amount_ml: amount, beverage_type }, {
       onSuccess: () => toast.success(`${amount}ml ${beverageMap[beverage_type].label} added`),
-      onError: (err) => toast.error(err.message),
+      onError: () => toast.error("Something went wrong. Please try again."),
     });
   }
 
@@ -79,6 +104,15 @@ export default function WaterPage() {
   }
 
   const ButtonIcon = beverageMap[selectedType].icon;
+  const milestone = getMilestone(progress);
+
+  const grouped = entries?.reduce((acc, e) => {
+    const date = e.entry_date;
+    if (!acc[date]) acc[date] = [];
+    acc[date]!.push(e);
+    return acc;
+  }, {} as Record<string, WaterIntake[]>);
+  const sortedDates = grouped ? Object.keys(grouped).sort((a, b) => b.localeCompare(a)) : [];
 
   return (
     <div className="space-y-6">
@@ -128,9 +162,10 @@ export default function WaterPage() {
           <div className="flex items-end gap-2">
             <span className="text-3xl font-bold">{Math.round(todayHydrationAdjusted)}</span>
             <span className="text-muted-foreground mb-1">/ {goal} ml</span>
+            {milestone && <span className={cn("text-sm font-medium ml-2 mb-1", progress >= 100 ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400")}>{milestone}</span>}
           </div>
           <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
+            <div className={cn("h-full rounded-full transition-all", getProgressColor(progress))} style={{ width: `${progress}%` }} />
           </div>
 
           {todayEntries.length > 0 && (
@@ -138,7 +173,7 @@ export default function WaterPage() {
               {(Object.entries(breakdown) as [string, number][]).filter(([, ml]) => ml > 0).map(([type, ml]) => {
                 const b = beverageMap[type as BeverageType];
                 return (
-                  <div key={type} className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${b.bgColor} ${b.color}`}>
+                  <div key={type} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium", b.bgColor, b.color)}>
                     <b.icon className="h-3.5 w-3.5" />
                     <span>{Math.round(ml)}ml</span>
                   </div>
@@ -147,6 +182,7 @@ export default function WaterPage() {
               <span className="text-xs text-muted-foreground self-center">
                 Total: {Math.round(todayTotal)}ml
               </span>
+              {hasNonWater && <span className="text-xs text-muted-foreground self-center italic">(adjusted for hydration)</span>}
             </div>
           )}
 
@@ -156,14 +192,14 @@ export default function WaterPage() {
               {BEVERAGES.map((b) => (
                 <Button
                   key={b.type}
-                  variant={selectedType === b.type ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     setSelectedType(b.type);
                     handleAdd(b.defaultAmount, b.type);
                   }}
                   disabled={addWater.isPending}
-                  className="gap-1.5"
+                  className={cn("gap-1.5", selectedType === b.type && b.selectedBg)}
                 >
                   <b.icon className="h-4 w-4" />
                   {b.defaultAmount}ml
@@ -192,19 +228,28 @@ export default function WaterPage() {
           {!entries?.length ? (
             <p className="text-sm text-muted-foreground">No entries yet. Use the quick-add buttons above to log your drinks throughout the day.</p>
           ) : (
-            <div className="space-y-2">
-              {entries.slice(0, 20).map((e) => {
-                const b = beverageMap[(e.beverage_type ?? "water") as BeverageType];
-                const Icon = b.icon;
-                return (
-                  <div key={e.id} className="flex items-center gap-3 text-sm">
-                    <Icon className={`h-4 w-4 ${b.color}`} />
-                    <span className="font-medium">{e.amount_ml} ml</span>
-                    <span className="text-muted-foreground">{b.label}</span>
-                    <span className="text-muted-foreground">{e.entry_date}</span>
+            <div className="space-y-6">
+              {sortedDates.map((date) => (
+                <div key={date}>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4" />
+                    {formatDateHeader(date)}
+                  </h3>
+                  <div className="space-y-1">
+                    {grouped[date].map((e: WaterIntake) => {
+                      const b = beverageMap[(e.beverage_type ?? "water") as BeverageType];
+                      const Icon = b.icon;
+                      return (
+                        <div key={e.id} className="flex items-center gap-3 text-sm py-1.5">
+                          <Icon className={cn("h-4 w-4 shrink-0", b.color)} />
+                          <span className="font-medium">{e.amount_ml} ml</span>
+                          <span className="text-muted-foreground text-xs">{b.label}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

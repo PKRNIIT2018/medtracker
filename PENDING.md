@@ -308,6 +308,221 @@ P3 (Nice to have) → Phase 7 + Phase 8 + Phase 9  (consistency + visual polish 
 
 ---
 
+## Screen-by-Screen Redesign Review
+
+### 1. Dashboard (`/dashboard`)
+
+**Issues:**
+- BP card shows no trend, no heart rate indicator, no status color coding. A single static reading is not informative.
+- Blood Sugar shows value + arrow but no meal slot context or date — user can't tell if this is fasting or post-meal.
+- All 4 stat cards are equal weight — no visual hierarchy between "this needs attention" and "all good."
+- No recent activity feed (was planned in PENDING.md Phase 4.1 but never added).
+
+**Redesign:**
+- Add status color border (green/yellow/red) on stat cards based on latest reading status.
+- Show last reading date under each value.
+- Show meal slot on blood sugar card (e.g., "120 ↑ Fasting").
+- Add a "Recent Activity" section below the 4 cards — last 3-5 actions across all modules.
+- BP card: show systolic/diastolic with color dot indicating status (normal/elevated/high).
+
+---
+
+### 2. Blood Sugar (`/blood-sugar`)
+
+**Issues:**
+- Loading skeleton: current placeholder has bg-muted bars but doesn't match the actual card layout (no grouping context shown).
+- Date headers use "May 10, 2026" format — standard but could be relative (e.g., "Today", "Yesterday", then date).
+- Cards show level badge + meal slot + time, but no visual indication of whether the reading is within target range.
+- Cards are compact with no visual depth differentiation between entries.
+
+**Redesign:**
+- Replace "May 10, 2026" headers with relative dates ("Today", "Yesterday", then actual date).
+- Add a small color indicator on the level badge showing target zone (green for normal, amber for borderline, red for out of range).
+- Show the time range for the meal slot (e.g., "Before Breakfast (07:00–09:00)").
+- Group section headers should match the page header style (h2 vs h1).
+- Consider a simple sparkline or mini trend chart for readings in a date group.
+
+---
+
+### 3. Vitals (`/vitals`)
+
+**Issues:**
+- Blood Pressure cards show `<span className="text-sm font-normal text-muted-foreground">mmHg</span>` inline with the value — mixes font sizes poorly.
+- Edit/Delete buttons are rendered inside `CardContent` — makes the card action area feel cramped.
+- Blood Panel table: the legend row (row 2) shares a visual line with headers but is semantically part of the body — confusing.
+- No loading skeleton for any of the 3 tabs.
+- Heart rate shown as "HR: 72 bpm" in a single muted line — could be more prominent.
+
+**Redesign:**
+- BP reading: show systolic/diastolic in a 2-column stat layout (big numbers), heart rate as a smaller tag beside or below.
+- Add color-coded left border on BP cards (green/yellow/red) based on classification.
+- Move Edit/Delete buttons to a consistent position across all card types (right side, same spacing).
+- Remove the inline legend row from the table — add it as a tooltip or a static legend above the table instead.
+- Add a loading skeleton matching the card layout per tab.
+
+---
+
+### 4. Medications (`/medications`)
+
+**Issues:**
+- "Today's Log" section mixes medication rows with time slot buttons — no visual grouping to separate the header from the actions.
+- Grid layout (`grid-cols-3`) makes cards very narrow on tablets.
+- Active/inactive toggle button uses `variant="default"` vs `variant="secondary"` — not immediately clear which state is which.
+- The `ai_summary` text in the card has no visual treatment — looks like regular muted text.
+- Medication cards: no visual indicator of how many times per day (the badge row just shows labels, no count).
+- "Add Medication" and "Edit Medication" dialogs have identical form markup — duplicate code.
+
+**Redesign:**
+- "Today's Log": visually separate the header row from the medication rows (border-bottom, lighter background).
+- Make grid `grid-cols-2` max on tablets, cards will have more horizontal space.
+- Use `variant={med.is_active ? "default" : "outline"}` — outline for inactive is clearer.
+- Style `ai_summary` with an info badge or distinct background (e.g., `bg-accent/30`) so it reads as AI-generated context.
+- Add a "times/day" count on the card (e.g., "×2 daily").
+- Extract shared medication form into a component (similar to BloodSugarForm).
+
+---
+
+### 5. Water/Hydration (`/water`)
+
+**Issues:**
+- Quick-add buttons are all same size/weight — no visual distinction between the selected type and others. The selected type only changes `variant` but doesn't feel "active."
+- "Total: 1500ml" is shown at the end of the breakdown badges row — could be confused as part of the badges.
+- Recent Entries list is flat — could benefit from date grouping like blood sugar page.
+- No status indicator on the progress bar (e.g., "50% — halfway there" or "80% — almost there").
+- The hydration ratio information (water 100%, coffee 80%, beer 50%) is never shown to the user — they see adjusted total but don't know why.
+
+**Redesign:**
+- Selected quick-add button should be visually distinct (e.g., filled with beverage color, not just default variant).
+- Show "Hydration adjusted" note when non-water beverages are present, explaining the adjustment.
+- Group Recent Entries by date (like blood sugar) with relative date headers.
+- Add milestone messages to progress bar (e.g., "💧 Halfway there!", "🎉 Goal reached!").
+- Progress bar color could shift from blue to green as it approaches goal.
+
+---
+
+### 6. Activity (`/activity`)
+
+**Issues:**
+- No intensity indicator — "10,000 steps" has no context of whether that's good.
+- Entry cards are plain text list — no visual hierarchy.
+- No grouping by date or week.
+- Calories shown as "cal" but should be "kcal" for clarity.
+- No empty state encouragement about what counts as activity.
+
+**Redesign:**
+- Group entries by date with relative headers (Today, Yesterday, this week).
+- Show activity "type" indicator (walking, running, gym) if data supports it, or default to steps with a visual meter/scale.
+- Display calories in kcal with a flame icon.
+- Add a visual summary at the top: "This week: X steps total, Y kcal burned."
+
+---
+
+### 7. Medical History (`/medical-history`)
+
+**Issues:**
+- "Condition" / "Surgery" / "Allergy" badges use different variants but the color difference between `default` (blue-grey) and `secondary` (darker) is too subtle.
+- No date grouping — all entries are in one flat list regardless of when they occurred.
+- Description text is muted and can get lost visually.
+
+**Redesign:**
+- Group entries by date or category. Consider a 2-column layout: Conditions on left, Surgeries/Allergies on right.
+- Make "Allergy" badge use `variant="destructive"` (red) — it's the most critical category.
+- Increase visual weight on the title — make it the primary text, description secondary.
+- Add a small icon per category (heart for condition, scalpel for surgery, warning for allergy).
+
+---
+
+### 8. Quarterly Results (`/quarterly-results`)
+
+**Issues:**
+- Cards are bulky — the inner metrics table is inside a `CardContent` which adds extra padding around the table.
+- "No metrics added yet" empty state is not actionable.
+- No way to edit individual metrics within a batch.
+
+**Redesign:**
+- Remove the metrics table from `CardContent` and style the table more like a standalone component (no extra card padding around it).
+- Add "Add Metric" button per batch so users can add individual results to a quarter.
+- Consider a compact inline metric display instead of a full table for batches with only 1-2 metrics.
+
+---
+
+### 9. Settings (`/settings`)
+
+**Issues:**
+- Profile tab: all fields are uncontrolled `defaultValue` with `onBlur` — no loading state, no success feedback, no validation.
+- Appointment cards use a different layout from all other pages (inline badge-less title, date/location in a flex row) — inconsistent.
+- PIN input doesn't show any visual feedback that 4 digits are entered (dots vs numbers).
+
+**Redesign:**
+- Add a save button or inline save indicator (checkmark/spinner) on profile fields.
+- Make appointment cards consistent with other list pages (card with title, action buttons).
+- PIN inputs should show dots (●●●●) in the field, with the field turning green when complete.
+
+---
+
+### Cross-Cutting: Layout & Navigation
+
+**Sidebar:**
+- Nav items all have equal visual weight. Dashboard and Vitals are the most important — consider making them slightly larger or more prominent.
+- No visual indicator of current active page — the `bg-primary` fill works but could be more distinctive.
+- "Lock App" and "Sign out" are at the bottom — good, but they could use icon-only on mobile.
+
+**Header:**
+- Empty header area (`flex-1`) is wasted space on desktop. Could show the current page title or breadcrumb here.
+
+**Mobile:**
+- The sidebar overlay works but the content doesn't shift — consider a bottom nav bar on mobile for the top 4-5 sections (Dashboard, Blood Sugar, Vitals, Medications, Settings).
+
+---
+
+### Cross-Cutting: Design System
+
+**Cards:**
+- `shadow-card` is barely visible (0.1 opacity). Consider `shadow-sm` which has `0 1px 2px 0 rgb(0 0 0 / 0.05)` — more perceptible.
+- Card header `CardTitle` uses `text-base` but pages use `text-3xl` for page title. The gap is large.
+
+**Typography:**
+- Page titles: `text-3xl font-bold` — standard but could be tightened.
+- Secondary text is mixed between `text-sm` and `text-xs` — standardize on `text-sm` for most secondary info.
+- `text-muted-foreground` is used widely but on the `--muted-foreground: oklch(0.556 0 0)` the contrast ratio might be borderline (55% lightness on white). Ensure all secondary text meets 4.5:1.
+
+**Empty States:**
+- All empty states use `<CardContent className="py-12">` with center alignment — good consistency.
+- But they all lack loading skeletons (replaced with `"Loading..."` text in several pages).
+
+**Form Validation:**
+- No pages show inline validation feedback on blur (only on submit). Add `onBlur` validation for critical fields.
+
+---
+
+### Priority Order for Redesign
+
+```
+P0 — Critical readability
+  1. Vitals BP cards: add color borders, separate BP numbers from HR, move action buttons
+  2. Medications Today's Log: visual grouping, clearer active/inactive state
+  3. Blood Sugar: relative date headers, add status color on badges
+
+P1 — Visual consistency
+  4. Dashboard: add status coloring and trend context to stat cards
+  5. Water: selected beverage button highlighting, grouped recent entries
+  6. Activity: date grouping, calorie unit fix (kcal)
+
+P2 — UX polish
+  7. Medical History: category icon differentiation, badge color fix (Allergy = destructive)
+  8. Quarterly Results: table styling, remove inner card padding
+  9. Settings: form save feedback, PIN dots, appointment card consistency
+ 10. Layout: header breadcrumb, sidebar visual hierarchy
+
+P3 — Low priority
+  11. All pages: add loading skeletons (not "Loading..." text)
+  12. Card shadow: increase from 0.1 to 0.2 opacity or use shadow-sm
+  13. Typography: audit text-muted-foreground contrast ratios
+  14. Extract shared form components (MedicationForm, ActivityForm, etc.)
+```
+
+---
+
 ## Audit: Blood Sugar Page — Flaws & Vulnerabilities
 
 ### High — FIXED

@@ -317,7 +317,9 @@ export default function MedicationsPage() {
       )}
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1,2,3].map(i => <Card key={i}><CardHeader><div className="h-5 w-32 animate-pulse bg-muted rounded" /></CardHeader><CardContent><div className="h-4 w-48 animate-pulse bg-muted rounded" /></CardContent></Card>)}
+        </div>
       ) : !medications?.length ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-12">
