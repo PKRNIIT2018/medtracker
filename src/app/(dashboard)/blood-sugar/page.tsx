@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Activity, Pencil, Trash2, ChevronRight, AlertCircle, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Activity, Pencil, Trash2, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
+import { getSugarLevel, sugarBorderColors, sugarBadgeColors, sugarIconConfig } from "@/lib/vitals-colors";
 import { cn } from "@/lib/utils";
 import type { BloodSugar } from "@/types/database";
 
@@ -26,24 +27,6 @@ const MEAL_SLOT_ORDER: string[] = [
   "before_dinner",
   "after_dinner",
 ];
-
-function getLevelStatus(level: number): "normal" | "low" | "high" {
-  if (level < 70) return "low";
-  if (level > 140) return "high";
-  return "normal";
-}
-
-const statusColors: Record<string, string> = {
-  normal: "border-l-green-500",
-  low: "border-l-red-400",
-  high: "border-l-red-500",
-};
-
-const statusBadgeColors: Record<string, string> = {
-  normal: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  low: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  high: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-};
 
 function formatDateHeader(date: string): string {
   if (isToday(parseISO(date))) return "Today";
@@ -140,14 +123,11 @@ export default function BloodSugarPage() {
     setEditOpen(true);
   }
 
-  function getLevelColor(level: number) {
-    return getLevelStatus(level) === "normal" ? "default" : "destructive";
-  }
-
   function StatusIcon({ status }: { status: string }) {
-    if (status === "normal") return <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />;
-    if (status === "low") return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    const config = sugarIconConfig[status as keyof typeof sugarIconConfig];
+    if (!config) return null;
+    const Icon = config.icon;
+    return <Icon className={`h-4 w-4 ${config.className}`} />;
   }
 
   return (
@@ -258,12 +238,12 @@ export default function BloodSugarPage() {
                     </h2>
                     <div className="space-y-2">
                       {grouped[date].map((r) => {
-                        const status = getLevelStatus(r.level_mgdl);
+                        const status = getSugarLevel(r.level_mgdl);
                         return (
-                          <Card key={r.id} className={cn("border-l-4 pl-0", statusColors[status])}>
+                          <Card key={r.id} className={cn("border-l-4 pl-0", sugarBorderColors[status])}>
                             <CardContent className="flex items-center justify-between py-3">
                               <div className="flex items-center gap-3">
-                                <span className={cn("inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold min-w-[3.5rem]", statusBadgeColors[status])}>
+                                <span className={cn("inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold min-w-[3.5rem]", sugarBadgeColors[status])}>
                                   {r.level_mgdl}
                                 </span>
                                 <div>

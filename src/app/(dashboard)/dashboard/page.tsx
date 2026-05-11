@@ -12,6 +12,7 @@ import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { Plus, Activity, Droplets, Heart, Pill } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { getBpBorderColor, getSugarLevel } from "@/lib/vitals-colors";
 
 const supabase = createClient();
 
@@ -43,19 +44,6 @@ function Sparkline({ data, color }: { data: { value: number | null }[]; color: s
       </ResponsiveContainer>
     </div>
   );
-}
-
-function bpStatusColor(systolic: number, diastolic: number): string {
-  if (systolic >= 180 || diastolic >= 120) return "border-t-red-500";
-  if (systolic >= 140 || diastolic >= 90) return "border-t-red-400";
-  if (systolic >= 130 || diastolic >= 80) return "border-t-amber-400";
-  return "border-t-green-500";
-}
-
-function getSugarStatus(level: number): "normal" | "low" | "high" {
-  if (level < 70) return "low";
-  if (level > 140) return "high";
-  return "normal";
 }
 
 function StatCard({ icon, title, children, borderClass, sparkline }: { icon: React.ReactNode; title: string; children: React.ReactNode; borderClass?: string; sparkline?: React.ReactNode }) {
@@ -106,7 +94,7 @@ export default function DashboardPage() {
 
   const latestSugar = sugarReadings?.[0];
   const previousSugar = sugarReadings?.[1];
-  const sugarStatus = latestSugar ? getSugarStatus(latestSugar.level_mgdl) : "normal";
+  const sugarStatus = latestSugar ? getSugarLevel(latestSugar.level_mgdl) : "normal";
   const sugarTrend = latestSugar && previousSugar ? (latestSugar.level_mgdl - previousSugar.level_mgdl > 5 ? " up" : latestSugar.level_mgdl - previousSugar.level_mgdl < -5 ? " down" : " stable") : "";
 
   const sugarSparkline = getLast7Days().map(({ date, label }) => {
@@ -205,7 +193,7 @@ export default function DashboardPage() {
         <StatCard
           icon={<Heart className="h-4 w-4" />}
           title="Blood Pressure"
-          borderClass={latestBP ? bpStatusColor(latestBP.systolic, latestBP.diastolic) : undefined}
+          borderClass={latestBP ? getBpBorderColor(latestBP.systolic, latestBP.diastolic, "t") : undefined}
           sparkline={<Sparkline data={bpSparkline} color="#ef4444" />}
         >
           {latestBP ? (

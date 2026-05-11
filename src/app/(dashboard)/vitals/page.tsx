@@ -22,20 +22,7 @@ import { format, parseISO } from "date-fns";
 import { AddVitalsDialogContent } from "@/components/vitals/AddVitalsDialog";
 import { summarizeBloodPressure } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
-
-function bpStatusColor(systolic: number, diastolic: number): string {
-  if (systolic >= 180 || diastolic >= 120) return "border-l-red-500";
-  if (systolic >= 140 || diastolic >= 90) return "border-l-red-400";
-  if (systolic >= 130 || diastolic >= 80) return "border-l-amber-400";
-  return "border-l-green-500";
-}
-
-function bpStatusLabel(systolic: number, diastolic: number): string {
-  if (systolic >= 180 || diastolic >= 120) return "Very High";
-  if (systolic >= 140 || diastolic >= 90) return "High";
-  if (systolic >= 130 || diastolic >= 80) return "Elevated";
-  return "Normal";
-}
+import { getBpBorderColor, getBpStatusLabel, getPanelLevel, panelLevelColors, panelStatusIcons, panelStatusLabels } from "@/lib/vitals-colors";
 
 const dateStr = format(new Date(), "yyyy-MM-dd");
 
@@ -50,27 +37,6 @@ const panelFields = [
   { key: "b_hba1c_dc" as const, label: "B-HbA1c DC", description: "HbA1c in DCCT %", unit: "%", range: "Normal: <6.0%; 6.0–6.4% prediabetes; ≥6.5% diabetes" },
   { key: "b_hba1c_if" as const, label: "B-HbA1c IF", description: "HbA1c in IFCC mmol/mol", unit: "mmol/mol", range: "Normal: ≤41; 42–47 prediabetes; ≥48 diabetes" },
 ];
-
-function panelLevel(value: number | null, key: string): "low" | "normal" | "borderline" | "high" | null {
-  if (value == null) return null;
-  switch (key) {
-    case "s_chol": return value >= 5.0 ? "high" : "normal";
-    case "s_tag": return value >= 1.7 ? "high" : "normal";
-    case "s_hdl": return value < 1.0 ? "low" : "normal";
-    case "non_hdl": return value >= 4.0 ? "high" : "normal";
-    case "s_ck": return value < 0.2 ? "low" : value > 2.27 ? "high" : "normal";
-    case "b_hba1c_dc": return value >= 6.5 ? "high" : value >= 6.0 ? "borderline" : "normal";
-    case "b_hba1c_if": return value >= 48 ? "high" : value >= 42 ? "borderline" : "normal";
-    default: return null;
-  }
-}
-
-const levelColors: Record<string, string> = {
-  low: "text-red-600 dark:text-red-400",
-  normal: "text-green-600 dark:text-green-400",
-  borderline: "text-amber-600 dark:text-amber-400",
-  high: "text-red-600 dark:text-red-400",
-};
 
 export default function VitalsPage() {
   const { data: bpReadings } = useBloodPressureReadings();
@@ -119,7 +85,7 @@ export default function VitalsPage() {
     });
   }
 
-  function openEditVitals(type: string, row: any) {
+  function openEditVitals(type: string, row: { id: string; reading_date: string; reading_time?: string | null; notes?: string | null; systolic?: number; diastolic?: number; heart_rate?: number | null; weight_kg?: number }) {
     setEditType(type);
     setEditId(row.id);
     if (type === "bp") {
@@ -268,12 +234,12 @@ export default function VitalsPage() {
           {!bpReadings?.length ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">No blood pressure readings yet. Track your systolic and diastolic readings to monitor heart health.</CardContent></Card>
           ) : bpReadings.map((r) => (
-            <Card key={r.id} className={cn("border-l-4 pl-0", bpStatusColor(r.systolic, r.diastolic))}>
+            <Card key={r.id} className={cn("border-l-4 pl-0", getBpBorderColor(r.systolic, r.diastolic))}>
               <CardContent className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-4">
                   <div>
                     <p className="text-2xl font-bold leading-none">{r.systolic}<span className="text-lg font-normal text-muted-foreground">/{r.diastolic}</span></p>
-                    <p className="text-sm font-medium text-muted-foreground mt-0.5">{bpStatusLabel(r.systolic, r.diastolic)}</p>
+                    <p className="text-sm font-medium text-muted-foreground mt-0.5">{getBpStatusLabel(r.systolic, r.diastolic)}</p>
                   </div>
                   {r.heart_rate && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
@@ -374,14 +340,12 @@ export default function VitalsPage() {
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{r.reading_date}</TableCell>
                       {panelFields.map((f) => {
                         const val = r[f.key as keyof typeof r] as number | null;
-                        const level = panelLevel(val, f.key);
-                        const statusIcons: Record<string, string> = { low: "▼", normal: "✓", borderline: "⚠", high: "▲" };
-                        const statusLabels: Record<string, string> = { low: "Low", normal: "Normal", borderline: "Borderline", high: "High" };
+                        const level = getPanelLevel(val, f.key);
                         return (
                           <TableCell key={f.key} className="whitespace-nowrap">
                             {val != null ? (
-                              <span className={cn("font-medium", level ? levelColors[level] : "")} title={level ? `${f.label}: ${val} ${f.unit} — ${statusLabels[level]}` : undefined} aria-label={level ? `${f.label}: ${val} ${f.unit} — ${statusLabels[level]}` : undefined}>
-                                {level && <span aria-hidden="true">{statusIcons[level]} </span>}
+                              <span className={cn("font-medium", level ? panelLevelColors[level] : "")} title={level ? `${f.label}: ${val} ${f.unit} — ${panelStatusLabels[level]}` : undefined} aria-label={level ? `${f.label}: ${val} ${f.unit} — ${panelStatusLabels[level]}` : undefined}>
+                                {level && <span aria-hidden="true">{panelStatusIcons[level]} </span>}
                                 {val} <span className="text-xs text-muted-foreground">{f.unit}</span>
                               </span>
                             ) : (

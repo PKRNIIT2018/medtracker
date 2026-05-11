@@ -1,7 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import type { VitalsSummary } from "@/features/vitals/summary";
-
-const trendColors = { improved: "text-green-600", unchanged: "text-muted-foreground", worse: "text-red-600" };
+import { trendColors, trendArrows } from "@/lib/vitals-colors";
 
 export function SummaryCard({ summary }: { summary: VitalsSummary }) {
   return (
@@ -18,9 +17,7 @@ export function SummaryCard({ summary }: { summary: VitalsSummary }) {
                 <span>
                   Previous: <strong>{summary.previousValue}</strong>
                   <span className={`ml-1 ${trendColors[summary.trend]}`}>
-                    {summary.trend === "improved" && "↓ Better"}
-                    {summary.trend === "worse" && "↑ Worse"}
-                    {summary.trend === "unchanged" && "→ Same"}
+                    {trendArrows[summary.trend]}
                   </span>
                 </span>
               )}

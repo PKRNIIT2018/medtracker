@@ -137,6 +137,8 @@ export interface BloodPanel {
   created_at: string
 }
 
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+
 export interface Appointment {
   id: string
   user_id: string
@@ -146,6 +148,7 @@ export interface Appointment {
   appointment_time: string | null
   location: string | null
   notes: string | null
+  status: AppointmentStatus
   deleted_at: string | null
   created_at: string
 }
