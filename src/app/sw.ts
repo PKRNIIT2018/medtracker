@@ -23,3 +23,50 @@ installSerwist({
     ],
   },
 });
+
+// ─── Push Notifications ───────────────────────────────────────────────────────
+
+self.addEventListener("push", (event: PushEvent) => {
+  let data: { title: string; body?: string; icon?: string; tag?: string; url?: string } = {
+    title: "MedTracker",
+  };
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data.title = event.data.text() || "MedTracker";
+    }
+  }
+
+  const options: NotificationOptions = {
+    body: data.body ?? "Time for your health reminder",
+    icon: data.icon ?? "/icons/icon-192x192.png",
+    badge: "/icons/icon-192x192.png",
+    tag: data.tag ?? "medtracker-reminder",
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
+    data: { url: data.url ?? "/" },
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener("notificationclick", (event: NotificationEvent) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url ?? "/";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      // Focus existing window if found
+      for (const client of windowClients) {
+        if (client.url === urlToOpen && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open new window
+      return clients.openWindow(urlToOpen);
+    }),
+  );
+});

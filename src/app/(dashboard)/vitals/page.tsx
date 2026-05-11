@@ -394,6 +394,9 @@ export default function VitalsPage() {
           )}
         </TabsContent>
       </Tabs>
+      <p className="text-xs text-muted-foreground/60 text-center pt-2">
+        This information is for tracking purposes only and is not medical advice. Always consult your doctor about your health metrics.
+      </p>
     </div>
   );
 }

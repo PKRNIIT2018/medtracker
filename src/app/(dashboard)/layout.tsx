@@ -19,21 +19,48 @@ import {
   X,
   FlaskConical,
   Lock,
+  Calendar,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { PinGate, isPinVerified, clearPinSession, refreshPinSession } from "@/components/pin-gate";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/medications", label: "Medications", icon: Pill },
-  { href: "/blood-sugar", label: "Blood Sugar", icon: Activity },
-  { href: "/vitals", label: "Vitals", icon: Heart },
-  { href: "/water", label: "Water", icon: Droplets },
-  { href: "/activity", label: "Activity", icon: ClipboardList },
-  { href: "/medical-history", label: "Medical History", icon: ClipboardList },
-  { href: "/quarterly-results", label: "Quarterly Results", icon: FlaskConical },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/settings", label: "Settings", icon: Settings },
+const navGroups = [
+  {
+    label: "Today",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Track",
+    items: [
+      { href: "/blood-sugar", label: "Blood Sugar", icon: Activity },
+      { href: "/vitals", label: "Vitals", icon: Heart },
+      { href: "/water", label: "Water", icon: Droplets },
+      { href: "/activity", label: "Activity", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "Care",
+    items: [
+      { href: "/medications", label: "Medications", icon: Pill },
+      { href: "/appointments", label: "Appointments", icon: Calendar },
+      { href: "/medical-history", label: "Medical History", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "Review",
+    items: [
+      { href: "/quarterly-results", label: "Quarterly Results", icon: FlaskConical },
+      { href: "/reports", label: "Reports", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export default function DashboardLayout({
@@ -48,11 +75,15 @@ export default function DashboardLayout({
   const [pinEnabled, setPinEnabled] = useState(false);
   const [showPinGate, setShowPinGate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkPinStatus() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setUserEmail(user.email ?? null);
+        setUserName(user.user_metadata?.full_name ?? null);
         const { data: settings } = await supabase
           .from("user_settings")
           .select("app_pin_enabled")
@@ -115,7 +146,7 @@ export default function DashboardLayout({
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse">Loading...</div>
+        <div className="animate-pulse" aria-live="polite">Loading...</div>
       </div>
     );
   }
@@ -155,22 +186,39 @@ export default function DashboardLayout({
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                pathname === item.href
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
+        {(userName || userEmail) && (
+          <div className="border-b px-4 py-3">
+            <p className="text-sm font-medium truncate">{userName ?? userEmail}</p>
+            {userName && userEmail && (
+              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+            )}
+          </div>
+        )}
+        <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      pathname === item.href
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <div className="border-t p-3 space-y-1">

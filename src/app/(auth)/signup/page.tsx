@@ -16,6 +16,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  "Invalid login credentials": "Email or password is incorrect. Please try again.",
+  "Email not confirmed": "Please verify your email address before signing in.",
+  "invalid_grant": "The login link has expired. Please try again.",
+  "User already registered": "An account with this email already exists. Please sign in.",
+  "Password should be at least 6 characters": "Password must be at least 6 characters.",
+  "Signup requires a valid password": "Password must be at least 6 characters.",
+};
+
+function userFacingError(message: string): string {
+  return AUTH_ERROR_MESSAGES[message] ?? "Something went wrong. Please try again.";
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -40,7 +53,7 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(userFacingError(error.message));
       setLoading(false);
       return;
     }
@@ -55,10 +68,10 @@ export default function SignupPage() {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + "/auth/callback" },
     });
     if (error) {
-      setError(error.message);
+      setError(userFacingError(error.message));
       setSocialLoading(null);
       return;
     }

@@ -153,6 +153,16 @@ export interface Appointment {
   created_at: string
 }
 
+export interface PushSubscription {
+  id: string
+  user_id: string
+  endpoint: string
+  p256dh_key: string
+  auth_key: string
+  user_agent: string | null
+  created_at: string
+}
+
 export interface AuditLog {
   id: string
   user_id: string

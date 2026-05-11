@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
 import { useBloodSugarReadings, useCreateBloodSugar, useUpdateBloodSugar, useDeleteBloodSugar } from "@/features/blood-sugar/hooks";
 import { bloodSugarSchema, type BloodSugarFormData, mealSlotLabels } from "@/features/blood-sugar/schema";
 import { BloodSugarForm } from "@/features/blood-sugar/components/BloodSugarForm";
@@ -15,7 +17,7 @@ import { toast } from "sonner";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
-import { getSugarLevel, sugarBorderColors, sugarBadgeColors, sugarIconConfig } from "@/lib/vitals-colors";
+import { getSugarLevel, sugarBorderColors, sugarBadgeColors, sugarIconConfig, toDisplayUnit, toMgdl } from "@/lib/vitals-colors";
 import { cn } from "@/lib/utils";
 import type { BloodSugar } from "@/types/database";
 
@@ -40,10 +42,19 @@ function toastError(err: unknown) {
 }
 
 export default function BloodSugarPage() {
+  const supabase = createClient();
   const { data: readings, isLoading, error, refetch } = useBloodSugarReadings();
   const createReading = useCreateBloodSugar();
   const updateReading = useUpdateBloodSugar();
   const deleteReading = useDeleteBloodSugar();
+  const { data: settings } = useQuery({
+    queryKey: ["user-settings"],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_settings").select("sugar_unit").single();
+      return data;
+    },
+  });
+  const sugarUnit = settings?.sugar_unit ?? "mg/dL";
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,7 +62,7 @@ export default function BloodSugarPage() {
     reading_date: format(new Date(), "yyyy-MM-dd"),
     reading_time: format(new Date(), "HH:mm"),
     meal_slot: "before_breakfast",
-    level_mgdl: 0,
+    level_mgdl: undefined as unknown as number,
     notes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -61,7 +72,7 @@ export default function BloodSugarPage() {
       reading_date: format(new Date(), "yyyy-MM-dd"),
       reading_time: format(new Date(), "HH:mm"),
       meal_slot: "before_breakfast",
-      level_mgdl: 0,
+      level_mgdl: undefined as unknown as number,
       notes: "",
     });
   }
@@ -82,14 +93,17 @@ export default function BloodSugarPage() {
     const data = validate();
     if (!data) return;
 
-    createReading.mutate(data, {
-      onSuccess: () => {
-        toast.success("Reading added");
-        setOpen(false);
-        resetForm();
+    createReading.mutate(
+      { ...data, level_mgdl: toMgdl(data.level_mgdl, sugarUnit) },
+      {
+        onSuccess: () => {
+          toast.success("Reading added");
+          setOpen(false);
+          resetForm();
+        },
+        onError: toastError,
       },
-      onError: toastError,
-    });
+    );
   }
 
   function handleEditSubmit(e: React.FormEvent) {
@@ -98,7 +112,7 @@ export default function BloodSugarPage() {
     if (!data || !editingId) return;
 
     updateReading.mutate(
-      { id: editingId, ...data },
+      { id: editingId, ...data, level_mgdl: toMgdl(data.level_mgdl, sugarUnit) },
       {
         onSuccess: () => {
           toast.success("Reading updated");
@@ -117,7 +131,7 @@ export default function BloodSugarPage() {
       reading_date: r.reading_date,
       reading_time: r.reading_time ?? "",
       meal_slot: r.meal_slot,
-      level_mgdl: r.level_mgdl,
+      level_mgdl: toDisplayUnit(r.level_mgdl, sugarUnit),
       notes: r.notes ?? "",
     });
     setEditOpen(true);
@@ -144,21 +158,21 @@ export default function BloodSugarPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Add Blood Sugar Reading</DialogTitle></DialogHeader>
-              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleSubmit} errors={errors} isPending={createReading.isPending} submitLabel="Save Reading" />
+              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleSubmit} errors={errors} isPending={createReading.isPending} submitLabel="Save Reading" unit={sugarUnit} />
             </DialogContent>
           </Dialog>
 
           <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingId(null); resetForm(); } }}>
             <DialogContent>
               <DialogHeader><DialogTitle>Edit Blood Sugar Reading</DialogTitle></DialogHeader>
-              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleEditSubmit} errors={errors} isPending={updateReading.isPending} submitLabel="Update Reading" />
+              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleEditSubmit} errors={errors} isPending={updateReading.isPending} submitLabel="Update Reading" unit={sugarUnit} />
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
       {readings && readings.length > 0 && (
-        <SummaryCard summary={summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings.length > 1 ? readings[1] : undefined)} />
+        <SummaryCard summary={summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings.length > 1 ? readings[1] : undefined, sugarUnit)} />
       )}
 
       {error ? (
@@ -203,7 +217,10 @@ export default function BloodSugarPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <Activity className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">No readings recorded yet.</p>
+            <p className="text-muted-foreground font-medium">No readings recorded yet</p>
+            <p className="text-sm text-muted-foreground text-center max-w-sm">
+              Log your blood sugar levels regularly to spot trends, understand how food affects you, and share data with your doctor.
+            </p>
             <Button variant="outline" onClick={() => setOpen(true)}>Add your first reading</Button>
           </CardContent>
         </Card>
@@ -244,7 +261,7 @@ export default function BloodSugarPage() {
                             <CardContent className="flex items-center justify-between py-3">
                               <div className="flex items-center gap-3">
                                 <span className={cn("inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold min-w-[3.5rem]", sugarBadgeColors[status])}>
-                                  {r.level_mgdl}
+                                  {toDisplayUnit(r.level_mgdl, sugarUnit)}
                                 </span>
                                 <div>
                                   <p className="text-sm font-medium">{mealSlotLabels[r.meal_slot]}</p>
@@ -285,6 +302,10 @@ export default function BloodSugarPage() {
           </div>
         );
       })()}
+
+      <p className="text-xs text-muted-foreground/60 text-center pt-2">
+        This information is for tracking purposes only and is not medical advice. Always consult your doctor about your blood sugar levels.
+      </p>
     </div>
   );
 }

@@ -9,10 +9,11 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
-import { Plus, Activity, Droplets, Heart, Pill } from "lucide-react";
+import { Plus, Activity, Droplets, Heart, Pill, Calendar, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { getBpBorderColor, getSugarLevel } from "@/lib/vitals-colors";
+import { getBpBorderColor, getBpStatusLabel, getSugarLevel } from "@/lib/vitals-colors";
 
 const supabase = createClient();
 
@@ -89,6 +90,14 @@ export default function DashboardPage() {
     },
   });
 
+  const { data: appointments } = useQuery({
+    queryKey: ["appointments"],
+    queryFn: async () => {
+      const { data } = await supabase.from("appointments").select("*").is("deleted_at", null).gte("appointment_date", format(new Date(), "yyyy-MM-dd")).order("appointment_date", { ascending: true }).limit(10);
+      return data ?? [];
+    },
+  });
+
   const today = format(new Date(), "yyyy-MM-dd");
   const activeToday = medications?.filter((m) => m.is_active && m.time_of_day?.length).length ?? 0;
 
@@ -120,6 +129,14 @@ export default function DashboardPage() {
     return { label, value: day[0]?.systolic ?? null };
   });
 
+  const upcomingAppts = (appointments ?? []).filter((a) => {
+    const diff = Math.ceil((new Date(a.appointment_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    return diff >= 0 && diff <= 7;
+  });
+
+  const abnormalSugar = sugarReadings?.find((r) => getSugarLevel(r.level_mgdl) !== "normal");
+  const abnormalBP = bpReadings?.find((r) => getBpStatusLabel(r.systolic, r.diastolic) !== "Normal");
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header-bg rounded-xl p-6">
@@ -130,6 +147,44 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {(abnormalSugar || abnormalBP || upcomingAppts.length > 0) && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Things to note
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {abnormalSugar && (
+              <Card className="border-l-4 border-l-red-400">
+                <CardContent className="py-3">
+                  <p className="text-xs text-muted-foreground">Blood Sugar</p>
+                  <p className="text-sm font-medium">Latest reading: {abnormalSugar.level_mgdl} mg/dL — <span className="text-red-500">{getSugarLevel(abnormalSugar.level_mgdl) === "low" ? "Low" : "High"}</span></p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(abnormalSugar.reading_date), "MMM d, yyyy")}</p>
+                </CardContent>
+              </Card>
+            )}
+            {abnormalBP && (
+              <Card className="border-l-4 border-l-red-400">
+                <CardContent className="py-3">
+                  <p className="text-xs text-muted-foreground">Blood Pressure</p>
+                  <p className="text-sm font-medium">{abnormalBP.systolic}/{abnormalBP.diastolic} — <span className="text-red-500">{getBpStatusLabel(abnormalBP.systolic, abnormalBP.diastolic)}</span></p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(abnormalBP.reading_date), "MMM d, yyyy")}</p>
+                </CardContent>
+              </Card>
+            )}
+            {upcomingAppts.slice(0, 2).map((a) => (
+              <Card key={a.id} className="border-l-4 border-l-blue-400">
+                <CardContent className="py-3">
+                  <p className="text-xs text-muted-foreground">Appointment</p>
+                  <p className="text-sm font-medium">{a.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(a.appointment_date), "MMM d")}{a.appointment_time && ` at ${a.appointment_time.slice(0, 5)}`}{a.doctor_name ? ` with ${a.doctor_name}` : ""}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={<Pill className="h-4 w-4" />} title="Medications Today">
@@ -151,7 +206,7 @@ export default function DashboardPage() {
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold">{latestSugar.level_mgdl}</span>
                 <span className="text-sm font-normal text-muted-foreground">mg/dL</span>
-                {sugarTrend && <span className={cn("text-sm font-medium", sugarTrend === " up" ? "text-red-500" : sugarTrend === " down" ? "text-green-500" : "text-muted-foreground")}>{sugarTrend}</span>}
+                {sugarTrend && <span className={cn("text-sm font-medium", sugarTrend === " up" ? "text-red-500" : sugarTrend === " down" ? "text-green-500" : "text-muted-foreground")} aria-label={`Trend: ${sugarTrend.trim()}`}>{sugarTrend}</span>}
               </div>
               <p className="text-xs text-muted-foreground">
                 {latestSugar.meal_slot ? latestSugar.meal_slot.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase()) : "Latest reading"}
@@ -203,6 +258,7 @@ export default function DashboardPage() {
                 <span className="text-lg font-normal text-muted-foreground">/{latestBP.diastolic}</span>
                 <span className="text-sm font-normal text-muted-foreground">mmHg</span>
               </div>
+              <p className="text-xs font-medium">{getBpStatusLabel(latestBP.systolic, latestBP.diastolic)}</p>
               {latestBP.heart_rate && <p className="text-xs text-muted-foreground">HR: {latestBP.heart_rate} bpm</p>}
               <p className="text-xs text-muted-foreground">
                 {isToday(parseISO(latestBP.reading_date)) ? "Today" : isYesterday(parseISO(latestBP.reading_date)) ? "Yesterday" : format(parseISO(latestBP.reading_date), "MMM d")}

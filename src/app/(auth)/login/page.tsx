@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +17,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  "Invalid login credentials": "Email or password is incorrect. Please try again.",
+  "Email not confirmed": "Please verify your email address before signing in.",
+  "invalid_grant": "The login link has expired. Please try again.",
+  "User already registered": "An account with this email already exists. Please sign in.",
+  "Password should be at least 6 characters": "Password must be at least 6 characters.",
+  "Signup requires a valid password": "Password must be at least 6 characters.",
+};
+
+function userFacingError(message: string): string {
+  return AUTH_ERROR_MESSAGES[message] ?? "Something went wrong. Please try again.";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -24,27 +37,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      return params.get("error");
+      const raw = params.get("error");
+      return raw ? userFacingError(raw) : null;
     }
     return null;
   });
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    if (code) {
-      const supabase = createClient();
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (!error) {
-          setError(null);
-          window.history.replaceState({}, "", "/login");
-          router.push("/dashboard");
-        }
-      });
-    }
-  }, [router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +57,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(userFacingError(error.message));
       setLoading(false);
       return;
     }
@@ -73,7 +72,7 @@ export default function LoginPage() {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + "/auth/callback" },
     });
     if (error) {
       setError(error.message);
@@ -143,12 +142,15 @@ export default function LoginPage() {
           </Button>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-center">
+      <CardFooter className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-primary underline underline-offset-4">
             Sign up
           </Link>
+        </p>
+        <p className="text-xs text-muted-foreground/60 text-center">
+          Your health data is encrypted and private. We never share your information without your consent.
         </p>
       </CardFooter>
     </Card>

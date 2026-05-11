@@ -3,34 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Loader2 } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createClient();
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-
-    if (code) {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data?.session) {
-          window.history.replaceState({}, "", "/");
-          router.push("/dashboard");
-        } else {
-          supabase.auth.exchangeCodeForSession(code).then((result) => {
-            if (!result.error) {
-              window.history.replaceState({}, "", "/");
-              router.push("/dashboard");
-            } else {
-              router.push("/login?error=" + encodeURIComponent(result.error.message));
-            }
-          });
-        }
-      });
-      return;
-    }
-
     supabase.auth.getSession().then(({ data }) => {
       if (data?.session) {
         router.push("/dashboard");
@@ -40,5 +19,12 @@ export default function Home() {
     });
   }, [router]);
 
-  return null;
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading MedTracker…</p>
+      </div>
+    </div>
+  );
 }

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Auto-update DOCUMENTATION.md changelog after each commit
+# Runs in post-commit so it doesn't modify the commit itself
+
+SCRIPT="$(git rev-parse --show-toplevel)/scripts/update-docs.sh"
+
+if [ -f "$SCRIPT" ]; then
+  bash "$SCRIPT" 2>/dev/null || true
+fi

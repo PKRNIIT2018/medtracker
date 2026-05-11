@@ -556,3 +556,446 @@ P3 — Low priority
 
 **`reading_time` stored as empty string instead of `null`**
 - **Fix:** In both `useCreateBloodSugar` and `useUpdateBloodSugar` hooks, `reading_time` is now explicitly set to `null` when the value is empty: `reading_time: values.reading_time || null`.
+
+
+---
+
+## Phase 10: Dashboard Health Graphs (Blood Sugar + Water Intake)
+
+### Goal
+Add richer dashboard graphs so the dashboard becomes a trend-view, not just a latest-value summary. The two first graph investments should be:
+- **Blood Sugar trend graph**
+- **Water Intake trend graph**
+
+These graphs should help answer:
+- What happened over the last 7 / 14 / 30 days?
+- Am I improving, stable, or inconsistent?
+- Am I reaching my hydration goal regularly?
+- Are blood sugar readings clustered high/low at specific times?
+
+---
+
+### 10.1 Product Definition
+
+#### Blood Sugar Graph
+**Primary purpose:**
+- Show trend over time, not just latest reading
+- Help spot patterns and outliers
+- Support quick interpretation from the dashboard
+
+**Recommended MVP behavior:**
+- Default range: **Last 7 days**
+- Optional range switcher: `7D / 14D / 30D`
+- Plot one point per reading
+- X-axis: date/time
+- Y-axis: blood sugar value
+- Use color for state:
+  - normal = green
+  - low = amber/red
+  - high = red
+- Tooltip should show:
+  - reading value
+  - unit
+  - date
+  - time
+  - meal slot
+- Add a subtle target band if possible:
+  - e.g. 70–140 mg/dL
+
+**Nice-to-have after MVP:**
+- toggle between:
+  - all readings
+  - daily average
+  - before meal only
+  - after meal only
+
+#### Water Intake Graph
+**Primary purpose:**
+- Show daily hydration progress across recent days
+- Help user see consistency, not just today’s total
+
+**Recommended MVP behavior:**
+- Default range: **Last 7 days**
+- Optional range switcher: `7D / 14D / 30D`
+- One bar per day
+- X-axis: day
+- Y-axis: total water/hydration amount
+- Show goal reference line using `daily_water_goal_ml`
+- Tooltip should show:
+  - date
+  - total ml
+  - goal
+  - percentage of goal reached
+
+**Nice-to-have after MVP:**
+- stacked bars by beverage type
+- hydration-adjusted total vs raw total toggle
+- “goal hit” markers
+
+---
+
+### 10.2 UX / Layout Recommendation
+
+**File:** `src/app/(dashboard)/dashboard/page.tsx`
+
+Add a new section below the current stat cards:
+
+#### Recommended order
+1. Things to note
+2. Stat cards
+3. **Trends section**
+   - Blood Sugar Trend
+   - Water Intake Trend
+
+#### Layout
+- Desktop: 2-column grid
+- Tablet/mobile: stacked cards
+- Each graph should live inside a `<Card>`
+- Each card should contain:
+  - title
+  - optional subtitle
+  - range switcher
+  - chart
+  - compact summary footer
+
+#### Summary footer examples
+**Blood Sugar**
+- Average: `118 mg/dL`
+- Readings: `12`
+- Last abnormal: `2 days ago`
+
+**Water**
+- Average daily intake: `1850 ml`
+- Goal hit: `4 of 7 days`
+- Best day: `2300 ml`
+
+---
+
+### 10.3 Data Requirements
+
+#### Blood Sugar Data
+Current source:
+- `useBloodSugarReadings()` in `src/features/blood-sugar/hooks.ts`
+
+Current limitations:
+- ordered only by `reading_date`
+- limited to 50 rows
+- no time-range parameter
+- no graph-specific shaping helper
+
+**Implementation need:**
+Create graph-ready shaping logic that:
+- filters by selected range
+- sorts by `reading_date` + `reading_time`
+- maps reading to chart point:
+  ```ts
+  {
+    xLabel: "May 11",
+    timestamp: "2026-05-11T08:30:00",
+    value: 124,
+    status: "normal",
+    mealSlot: "before_breakfast"
+  }
+  ```
+
+#### Water Data
+Current source:
+- `useWaterEntries()` in `src/features/water/hooks.ts`
+
+Current limitations:
+- reads latest 50 rows only
+- no `user_id` filter in read query (should be fixed for correctness and safety)
+- no aggregation helper
+- no range parameter
+
+**Implementation need:**
+Create daily aggregation logic:
+- group entries by `entry_date`
+- sum total amount per day
+- compare against `daily_water_goal_ml`
+- map to chart point:
+  ```ts
+  {
+    date: "2026-05-11",
+    label: "Sun",
+    total: 1800,
+    goal: 2000,
+    percentage: 90
+  }
+  ```
+
+---
+
+### 10.4 Technical Implementation Plan
+
+#### Step 1 — Create dashboard chart helpers
+**New file suggestion:**
+- `src/features/dashboard/chart-data.ts`
+
+Add helper functions:
+- `getDateRangeDays(range: "7d" | "14d" | "30d")`
+- `buildBloodSugarChartData(readings, range)`
+- `buildWaterChartData(entries, goal, range)`
+- `calculateBloodSugarGraphSummary(readings, range)`
+- `calculateWaterGraphSummary(entries, goal, range)`
+
+Purpose:
+- keep shaping logic out of `dashboard/page.tsx`
+- make graph logic reusable and testable
+
+---
+
+#### Step 2 — Create reusable dashboard chart card component
+**New file suggestion:**
+- `src/features/dashboard/components/DashboardTrendCard.tsx`
+
+Responsibilities:
+- shared card layout
+- title/subtitle
+- range switcher
+- loading state
+- empty state
+- optional footer metrics
+
+This avoids repeating the same card wrapper twice.
+
+---
+
+#### Step 3 — Create Blood Sugar dashboard graph component
+**New file suggestion:**
+- `src/features/dashboard/components/BloodSugarTrendChart.tsx`
+
+Responsibilities:
+- render chart using `recharts`
+- accept chart-ready data
+- display tooltip
+- show target band if implemented
+- expose accessible summary text
+
+Suggested chart type:
+- `LineChart` or `AreaChart`
+- prefer `LineChart` for discrete medical readings
+- use dots for readings
+- use status-aware dot color
+
+Recommended props:
+```ts
+{
+  data: BloodSugarChartPoint[];
+  unit: "mg/dL" | "mmol/L";
+  isLoading?: boolean;
+}
+```
+
+---
+
+#### Step 4 — Create Water dashboard graph component
+**New file suggestion:**
+- `src/features/dashboard/components/WaterTrendChart.tsx`
+
+Responsibilities:
+- render daily intake bars
+- show goal reference line
+- display tooltip
+- show accessible summary text
+
+Suggested chart type:
+- `BarChart`
+- one bar per day
+- use blue bars
+- add green accent if daily goal reached
+
+Recommended props:
+```ts
+{
+  data: WaterChartPoint[];
+  goal: number;
+  isLoading?: boolean;
+}
+```
+
+---
+
+#### Step 5 — Add range state to dashboard
+**File:** `src/app/(dashboard)/dashboard/page.tsx`
+
+Add local UI state:
+```ts
+const [sugarRange, setSugarRange] = useState<"7d" | "14d" | "30d">("7d");
+const [waterRange, setWaterRange] = useState<"7d" | "14d" | "30d">("7d");
+```
+
+Use helpers to derive:
+- `bloodSugarChartData`
+- `waterChartData`
+- summary footer metrics
+
+Important:
+- do not pack all transformation logic into the page
+- import from `src/features/dashboard/chart-data.ts`
+
+---
+
+#### Step 6 — Fix data access gaps before relying on charts
+**Files:**
+- `src/features/water/hooks.ts`
+- optionally `src/features/blood-sugar/hooks.ts`
+
+Required fixes:
+1. Add `.eq("user_id", user.user.id)` to `useWaterEntries()` read query
+2. Consider increasing read limit from `50` to `100` or making it range-aware
+3. Ensure results are ordered consistently for chart building
+4. Optionally add specialized dashboard query hooks later:
+   - `useDashboardBloodSugar(range)`
+   - `useDashboardWater(range)`
+
+---
+
+#### Step 7 — Add loading and empty states
+Each graph card should support:
+- skeleton while loading
+- empty message if no data in selected range
+- CTA button if useful:
+  - Blood Sugar → “Log Reading”
+  - Water → “Add Water”
+
+Suggested empty copy:
+- Blood Sugar: “No blood sugar readings in this period.”
+- Water: “No water intake logged in this period.”
+
+---
+
+#### Step 8 — Accessibility pass
+Requirements:
+- chart card must include text summary below chart
+- range switcher must be keyboard accessible
+- colors must not be the only status indicator
+- tooltip information should also be represented in textual summary
+- use `aria-label` or descriptive headings for chart purpose
+
+Examples:
+- “Blood sugar trend chart for the last 7 days”
+- “Water intake bar chart showing daily totals against your goal”
+
+---
+
+### 10.5 Suggested Types
+
+**New file suggestion:**
+- `src/features/dashboard/types.ts`
+
+```ts
+export type DashboardRange = "7d" | "14d" | "30d";
+
+export interface BloodSugarChartPoint {
+  label: string;
+  timestamp: string;
+  value: number;
+  status: "normal" | "low" | "high";
+  mealSlot: string | null;
+}
+
+export interface WaterChartPoint {
+  date: string;
+  label: string;
+  total: number;
+  goal: number;
+  percentage: number;
+}
+```
+
+---
+
+### 10.6 Phased Delivery
+
+#### Phase 10A — MVP
+- Add Blood Sugar trend card
+- Add Water intake trend card
+- Use existing fetched data
+- Add 7D range only
+- Add empty/loading states
+- Add compact summaries
+
+#### Phase 10B — Range Controls
+- Add `7D / 14D / 30D`
+- Add helper-driven chart transformations
+- Improve tooltip formatting
+
+#### Phase 10C — Quality Improvements
+- Add sugar target band
+- Add water goal reference line
+- Add better accessibility summaries
+- Increase query limits or make queries range-aware
+
+#### Phase 10D — Advanced Insights
+- Filter blood sugar by meal slot
+- Compare water goal hit rate
+- Add trend annotations
+- Add “view details” deep links to full pages
+
+---
+
+### 10.7 Acceptance Criteria
+
+#### Blood Sugar Graph
+- Dashboard shows a blood sugar trend chart in its own card
+- User can see at least last 7 days of readings
+- Tooltip shows reading value, date/time, and meal slot
+- Empty state appears when no readings exist
+- Data is filtered to the authenticated user only
+
+#### Water Graph
+- Dashboard shows a daily water intake chart in its own card
+- User can compare each day against their goal
+- Tooltip shows total, goal, and percent reached
+- Empty state appears when no water entries exist
+- Data is filtered to the authenticated user only
+
+#### General
+- Charts work on desktop and mobile
+- Cards match current dashboard visual style
+- Chart logic is extracted from page component
+- No duplicated transformation logic between dashboard and detail pages
+
+---
+
+### 10.8 Recommended File Changes
+
+#### New files
+- `src/features/dashboard/chart-data.ts`
+- `src/features/dashboard/types.ts`
+- `src/features/dashboard/components/DashboardTrendCard.tsx`
+- `src/features/dashboard/components/BloodSugarTrendChart.tsx`
+- `src/features/dashboard/components/WaterTrendChart.tsx`
+
+#### Existing files to update
+- `src/app/(dashboard)/dashboard/page.tsx`
+- `src/features/water/hooks.ts`
+- `src/features/blood-sugar/hooks.ts` (optional enhancement)
+- `src/lib/vitals-colors.ts` (optional if chart-specific colors/helpers are added)
+
+---
+
+### 10.9 Estimated Effort
+
+| Task | Complexity | Estimate |
+|------|------------|----------|
+| Chart data helpers | Medium | 45 min |
+| Blood sugar chart component | Medium | 45–60 min |
+| Water chart component | Medium | 45–60 min |
+| Dashboard integration | Medium | 45 min |
+| Water hook safety fix + query improvements | Low-Medium | 20–30 min |
+| Loading/empty/accessibility pass | Medium | 30–45 min |
+
+**Estimated total:** ~4 to 5 hours
+
+---
+
+### 10.10 Recommended Order
+1. Fix `useWaterEntries()` ownership filter
+2. Create chart data helper module
+3. Build Blood Sugar chart card
+4. Build Water chart card
+5. Integrate into dashboard
+6. Add range controls
+7. Accessibility and polish pass

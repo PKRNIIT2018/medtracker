@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pill, Pencil, Trash2, Package, Check, X } from "lucide-react";
+import { Plus, Pill, Pencil, Trash2, Package, Check, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Medication } from "@/types/database";
@@ -326,12 +326,30 @@ export default function MedicationsPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <Pill className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">No medications added yet.</p>
+            <p className="text-muted-foreground font-medium">No medications added yet</p>
+            <p className="text-sm text-muted-foreground text-center max-w-sm">
+              Add your medications to track doses, set reminders, and log daily intake. Keeping a complete medication list also helps during doctor visits.
+            </p>
             <Button variant="outline" onClick={() => setOpen(true)}>Add your first medication</Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <div className="rounded-lg bg-accent/30 px-3 py-2">
+              <span className="font-medium">{medications.length}</span> total
+            </div>
+            <div className="rounded-lg bg-accent/30 px-3 py-2">
+              <span className="font-medium">{medications.filter((m) => m.is_active).length}</span> active
+            </div>
+            <div className="rounded-lg bg-accent/30 px-3 py-2">
+              <span className="font-medium">{medications.filter((m) => m.stock_count != null && m.stock_count <= 5).length}</span> need refill
+            </div>
+            <div className="rounded-lg bg-green-100 dark:bg-green-900/20 px-3 py-2">
+              <span className="font-medium">{todayIntake?.filter((i) => i.status === "taken").length ?? 0}</span> taken today
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {medications.map((med, i) => (
             <Card key={med.id} className={cn("animate-fade-in", !med.is_active && "opacity-70")} style={{ animationDelay: `${i * 60}ms` }}>
               <CardHeader className="pb-3">
@@ -387,6 +405,9 @@ export default function MedicationsPage() {
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Package className="h-3 w-3" />
                     Stock: {med.stock_count}
+                    {med.stock_count <= 5 && (
+                      <Badge variant="destructive" className="ml-1 text-[10px] px-1.5 py-0 h-4">Refill soon</Badge>
+                    )}
                   </p>
                 )}
                 {med.ai_summary && (
@@ -399,7 +420,7 @@ export default function MedicationsPage() {
             </Card>
           ))}
         </div>
-      )}
+      </>)}
     </div>
   );
 }

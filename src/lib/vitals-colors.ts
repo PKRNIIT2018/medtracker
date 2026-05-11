@@ -47,6 +47,20 @@ export function getBpStatusLabel(systolic: number, diastolic: number): string {
   return labels[level];
 }
 
+// ─── Unit Conversion ──────────────────────────────────────────────────────────
+
+export const MGDL_TO_MMOLL = 18.0182;
+
+export function toMgdl(value: number, unit: string): number {
+  if (unit === "mmol/L") return Math.round(value * MGDL_TO_MMOLL * 10) / 10;
+  return value;
+}
+
+export function toDisplayUnit(value: number, unit: string): number {
+  if (unit === "mmol/L") return Math.round((value / MGDL_TO_MMOLL) * 10) / 10;
+  return value;
+}
+
 // ─── Blood Sugar ──────────────────────────────────────────────────────────────
 
 export type SugarLevel = "normal" | "low" | "high";
