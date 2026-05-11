@@ -1,20 +1,219 @@
-# MedTracker — Application Design (Web + Mobile + Desktop)
+# MedTracker — Design System: The Clinical Sanctuary
 
-## Overview
+## 1. Creative North Star
 
-This document defines the cross-platform architecture for MedTracker. The application targets **web browsers**, **mobile devices** (Android & iOS via both responsive web and native wrappers), and **desktop** (macOS/Windows via a web wrapper).
+The design system is built upon the creative north star of **"The Clinical Sanctuary."** In an enterprise medical context, we move beyond the cold, utilitarian "spreadsheet" aesthetic of legacy SaaS. Instead, we embrace a high-end editorial direction that balances clinical precision with atmospheric calm.
 
-The strategy is **progressive layering**:
+The goal is to move away from the "boxed-in" feel of standard UI. We achieve this through **Intentional Asymmetry** and **Architectural Air**. By utilizing generous whitespace and shifting away from rigid 1px borders, we create an interface that feels like a premium, physical space—reminiscent of a modern, world-class surgical center or a high-end medical journal.
+
+This system targets **web browsers**, **mobile devices** (Android & iOS via responsive web, PWA, and native wrappers), and **desktop** (macOS/Windows via web wrapper). The implementation strategy is **progressive layering**:
+
 1. **Responsive Next.js web app** — works on all screens immediately
 2. **PWA (Progressive Web App)** — installable on mobile/desktop with offline support
-3. **Capacitor wrapper** — native Android & iOS apps from the same web codebase (push notifications, native APIs)
-4. **Electron/Tauri wrapper** — desktop apps for macOS/Windows/ Linux
+3. **Capacitor wrapper** — native Android & iOS apps from the same web codebase
+4. **Electron/Tauri wrapper** — desktop apps for macOS/Windows/Linux
 
 All layers share the same Next.js codebase and Supabase backend.
 
 ---
 
-## Architecture Diagram
+## 2. Color Palette & Surface Logic
+
+The palette is rooted in the authority of Trust Blue, but its execution must be nuanced.
+
+### Primary Palette
+
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `--primary` | `#005387` | `#4a9eff` | Primary actions, active states |
+| `--primary_container` | `#1B6CA8` | `#1a5599` | Gradient partner, hover states |
+| `--on_primary` | `#ffffff` | `#001d36` | Text on primary backgrounds |
+| `--secondary` | `#d9e3f6` | `#2a3a5c` | Secondary surfaces |
+| `--on_secondary` | `#121c2a` | `#d9e3f6` | Text on secondary surfaces |
+
+### Surface Hierarchy
+
+Treat the UI as a series of physical layers. Use the surface tiers to "nest" importance:
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `--surface` | `#f8f9ff` | `#0d1117` | Base page background |
+| `--surface_container_low` | `#eff4ff` | `#161b22` | Structural sections, page-level containers |
+| `--surface_container` | `#e6eeff` | `#1c2333` | Secondary grouping (e.g., sidebar background) |
+| `--surface_container_high` | `#c5d6f8` | `#2d3a50` | Elevated surfaces, hover states |
+| `--surface_container_lowest` | `#ffffff` | `#0d1117` | Primary content blocks, cards |
+
+### The No-Line Rule
+
+Explicitly prohibited: 1px solid borders for sectioning or layout containment. Boundaries must be defined solely through background color shifts:
+
+- Use `--surface_container_low` (`#eff4ff`) for page backgrounds
+- Use `--surface_container_lowest` (`#ffffff`) for primary content blocks
+- This tonal transition creates a "natural" edge that is softer on the eyes and feels more sophisticated than a hard stroke
+
+### The Glass & Gradient Rule
+
+**Glassmorphism** for floating elements (navigation bars, modal headers, popovers):
+- `--surface_container_lowest` at 80% opacity
+- `backdrop-blur(20px)`
+- Creates a frosted-glass effect that elevates without harsh boundaries
+
+**Gradient CTAs** for high-impact actions:
+- 135° linear gradient from `--primary` (`#005387`) to `--primary_container` (`#1B6CA8`)
+- Avoid flat colors on primary buttons
+- Adds "soul" and depth, mimicking the way light hits a polished clinical surface
+
+### Semantic Colors
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `--success` | `#2e7d32` | `#66bb6a` | Taken status, positive metrics |
+| `--warning` | `#e65100` | `#ffa726` | Threshold warnings |
+| `--danger` | `#c62828` | `#ef5350` | Skipped status, destructive actions |
+| `--info` | `#005387` | `#4a9eff` | Informational badges |
+
+---
+
+## 3. Typography: Editorial Authority
+
+We utilize **Inter** not as a standard web font, but as an editorial tool.
+
+### Font Stack
+
+| Role | Family | Weight |
+|---|---|---|
+| Display / Headlines | Inter | 700 (Bold) |
+| Body | Inter | 400 (Regular) |
+| Data / Numbers | Inter | 500 (Medium) |
+| Code / Monospace | JetBrains Mono | 400 (Regular) |
+
+### Editorial Scale
+
+| Token | Size | Line Height | Letter Spacing | Usage |
+|---|---|---|---|---|
+| `display-lg` | 3.5rem (56px) | 1.1 | -0.02em | Hero metrics, doctor names |
+| `display-sm` | 2.5rem (40px) | 1.15 | -0.02em | Page titles, key values |
+| `headline-lg` | 2rem (32px) | 1.2 | -0.02em | Section headers |
+| `headline-sm` | 1.5rem (24px) | 1.3 | -0.01em | Card titles |
+| `title-md` | 1.125rem (18px) | 1.4 | 0 | Subheadings |
+| `body-md` | 0.875rem (14px) | 1.6 | 0 | Clinical notes, body text |
+| `body-sm` | 0.75rem (12px) | 1.5 | 0 | Metadata, labels |
+| `label-xs` | 0.625rem (10px) | 1.4 | 0.01em | Badge text, timestamps |
+
+### Contrast Hierarchy
+
+- Use `--on_surface` (`#121c2a` light / `#e6edf3` dark) for titles and primary text
+- Use `--on_surface_variant` (`#414750` light / `#8b949e` dark) for metadata and secondary text
+- This subtle shift in gray-scale defines hierarchy without adding lines
+
+### Responsive Typography
+
+| Element | Mobile | Tablet | Desktop |
+|---|---|---|---|
+| Page titles | `headline-sm` (24px) | `headline-lg` (32px) | `display-sm` (40px) |
+| Section headers | `title-md` (18px) | `headline-sm` (24px) | `headline-lg` (32px) |
+| Card titles | `body-md` (14px) | `body-md` (14px) | `title-md` (18px) |
+| Body | `body-md` (14px) | `body-md` (14px) | `body-md` (14px) |
+
+---
+
+## 4. Elevation & Depth
+
+In this system, depth is a feeling, not a shadow.
+
+### The Layering Principle
+
+Avoid the "shadow-everything" trap. A `--surface_container_high` drawer sliding over a `--surface` background provides enough contrast to signify depth without a single drop shadow. Surface tier shifts are the primary depth mechanism.
+
+### Ambient Shadows
+
+When a floating state is required (e.g., a critical popover or floating action button), use an ultra-diffused shadow:
+
+| Level | Offset | Blur | Color | Usage |
+|---|---|---|---|---|
+| 1 (subtle) | 0px 4px | 12px | `--on_surface` at 4% | Card hover, tooltips |
+| 2 (medium) | 0px 8px | 24px | `--on_surface` at 5% | Dropdowns, popovers |
+| 3 (floating) | 0px 20px | 40px | `--on_surface` at 6% | Modals, floating nav |
+
+Never use pure black or grey for shadows. The shadow color should always derive from `--on_surface` at low opacity to maintain a premium, midnight-blue tone.
+
+### The Ghost Border Fallback
+
+For input fields or accessibility-critical components, use a "Ghost Border":
+- Use `--outline_variant` (`#c5d6f8`) at 15% opacity
+- It should be barely perceptible—just enough to guide the eye
+- On focus, transition to full `--primary` at 2px thickness with a 4px outer glow
+
+---
+
+## 5. Component Styling
+
+### Buttons
+
+| Variant | Styling | Usage |
+|---|---|---|
+| **Primary** | 135° gradient `--primary` → `--primary_container`. Pill shape (`rounded-full`). White text. `shadow-sm`. | High-impact actions (Save, Add, Confirm) |
+| **Secondary** | No background. Ghost border using `--primary` at 20% opacity. Pill shape. | Alternative actions |
+| **Ghost** | No border. No background until hover (`--surface_container_high`). | Icon buttons, toolbar items |
+| **Destructive** | Solid `--danger` background. White text. | Delete, remove actions |
+| **Link** | Text only, underlined on hover. | Navigation, "view all" links |
+
+**States:** On hover, increase gradient intensity for primary. Avoid sudden color shifts — use `transition-all duration-150`.
+
+### Input Fields
+
+- Background: `--surface_container_lowest`
+- Ghost border: `--outline_variant` at 15% opacity, `1px` width
+- Radius: `md` (6px)
+- Focus state: `--primary` ring at `2px` thickness with a `4px` outer glow using `--primary` at 10% opacity
+- Padding: `12px 16px` (`py-3 px-4`)
+- Placeholder: `--on_surface_variant` at 60% opacity
+
+### Cards & Lists
+
+- **The Divider Rule:** Forbid 1px dividers between list items. Use vertical white space (`16px` from the spacing scale) or a subtle shift from `--surface_container_low` to `--surface_container`.
+- Cards sit on `--surface_container_lowest` atop a `--surface_container_low` page background
+- Soft natural lift: achieved purely through tonal contrast, no mandatory shadow
+- **Patient data cards:** Use asymmetrical layout. Key metrics can slightly overlap card boundaries to break the "grid-box" look
+
+### Scheduling Chips / Badges
+
+| Variant | Styling |
+|---|---|
+| Default (pending) | `--surface_container` background, `--on_surface_variant` text. Pill shape (`rounded-full`). |
+| Active (taken) | `--success` background at 15% opacity, `--success` text. `rounded-full`. |
+| Skipped | `--danger` background at 15% opacity, `--danger` text. `rounded-full`. |
+| Interactive | Hover transitions to `--primary_container` at 15% opacity. Cursor pointer. |
+
+### Navigation Components
+
+- **Top nav / header:** Glassmorphism — `--surface_container_lowest` at 80% opacity, `backdrop-blur(20px)`, bottom boundary via `--surface_container_high` (not a border line)
+- **Mobile bottom tab bar:** Same glassmorphism treatment
+- **Desktop sidebar:** `--surface_container` background, no border-right. Separated from content by tonal shift alone
+- **FAB:** Gradient button (same as primary), `rounded-full`, `shadow-md`, `56x56px`
+
+---
+
+## 6. Do's and Don'ts
+
+### Do
+
+- **Embrace the "White Space":** If a section feels crowded, remove a border and add `24px` of padding instead
+- **Use Tonal Shifts:** Always ask: "Can I define this area with a background color change instead of a line?"
+- **Typography First:** Use `headline-sm` to start every major module to establish immediate context
+- **Use Asymmetry:** Let key metrics and data points break out of rigid grid boxes for visual interest
+
+### Don't
+
+- **Don't use "Drop Shadows":** Never use the default CSS shadow settings. They are too heavy for a medical aesthetic. Use the Ambient Shadow rules in Section 4
+- **Don't use Pure Black:** There is no `#000000` in this system. Use `--on_surface` for the darkest values
+- **Don't Box the Data:** Avoid putting every table in a bordered box. Let the data breathe on a `--surface_container_lowest` background
+- **Don't use 1px borders** for sectioning — use background color shifts
+- **Don't use flat colors on primary CTAs** — always use the gradient
+
+---
+
+## 7. Architecture Diagram
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -54,7 +253,7 @@ All layers share the same Next.js codebase and Supabase backend.
 
 ---
 
-## Cross-Platform Strategy
+## 8. Cross-Platform Strategy
 
 ### Layer 1: Responsive Web (Primary)
 
@@ -73,9 +272,15 @@ All layers share the same Next.js codebase and Supabase backend.
 - `xl` (1280px) — wide desktop
 
 **Layout strategy:**
-- Mobile: single-column stack, bottom navigation bar (fixed), FABs for quick actions
+- Mobile: single-column stack, bottom navigation bar (fixed, glassmorphism), FABs for quick actions
 - Tablet: 2-column grid on dashboard, side nav collapsible
 - Desktop: full side navigation, multi-column layouts, keyboard shortcuts
+
+**Surface hierarchy on each device:**
+- Page background: `--surface_container_low`
+- Content cards: `--surface_container_lowest`
+- Navigation: Glassmorphism (`bg-white/80 backdrop-blur-xl`)
+- Dialogs/Popovers: `--surface_container_lowest` with ambient shadow (Level 3)
 
 ### Layer 2: PWA (Installable on Mobile & Desktop)
 
@@ -83,8 +288,8 @@ The Next.js app is enhanced with PWA capabilities for installable mobile/desktop
 
 | Feature | Implementation |
 |---|---|
-| Service Worker | `next-pwa` or `@serwist/next` — precaches static assets and API routes |
-| Manifest | `public/manifest.json` — app name, icons (192px + 512px), theme color, display: `standalone` |
+| Service Worker | `@serwist/next` — precaches static assets and API routes |
+| Manifest | `public/manifest.json` — app name, icons (192px + 512px), theme color: `#005387`, display: `standalone` |
 | Offline fallback | Cache-first strategy for static assets, network-first for data |
 | Push notifications | Web Push API + VAPID keys via `serviceWorker.register()` |
 | iOS specifics | `<meta name="apple-mobile-web-app-capable" content="yes">`, splash screens, status bar styling |
@@ -133,7 +338,7 @@ Wrap the same Next.js build for desktop distribution.
 
 ---
 
-## Navigation & Routing
+## 9. Navigation & Routing
 
 ### Page Structure (Next.js App Router)
 
@@ -172,37 +377,14 @@ Wrap the same Next.js build for desktop distribution.
 
 **Quick-add FAB** (mobile only): expands to show 4 options — Record Sugar, Log Meds, Water, Activity.
 
----
-
-## Component Architecture
-
-### Design System (shadcn/ui + Tailwind)
-
-All UI components follow a consistent atomic design hierarchy:
-
-```
-atoms/         Button, Input, Label, Card, Badge, Avatar, Progress
-molecules/    DatePicker, TimePicker, FormField, Modal, ConfirmDialog
-organisms/    MedicationCard, VitalsCard, WaterProgress, SugarChart, ExportPanel
-templates/    DashboardLayout, FormLayout, ListLayout
-pages/        (Next.js App Router pages)
-```
-
-### Key Shared Components
-
-| Component | Props | Responsive Behavior |
-|---|---|---|
-| `DashboardCard` | `title, value, trend, icon, onClick` | Full width on mobile, 2-col on tablet, 3-col on desktop |
-| `MedicationCard` | `medication, doses[], onToggle, onDelete` | Full width, time-of-day color coding |
-| `SugarEntryForm` | `mealSlot, level, notes, onSubmit` | Single column, large touch targets |
-| `WaterProgress` | `current, goal` | Circular SVG on mobile, horizontal bar on desktop |
-| `VitalsSnapshot` | `bp, sugar, hba1c, weight` | 2x2 grid on mobile, row on desktop |
-| `ExportPanel` | `filters, onExport` | Bottom sheet on mobile, side panel on desktop |
-| `FAB` | `actions[]` | Fixed bottom-right on mobile only |
+**Navigation styling:**
+- All nav surfaces use glassmorphism (`bg-white/80 backdrop-blur-xl` in light, `bg-[#0d1117]/80 backdrop-blur-xl` in dark)
+- Desktop sidebar uses `--surface_container` background (no border-right), separated from content by tonal shift
+- Active tab uses `--primary` text with subtle `--primary` background at 10% opacity
 
 ---
 
-## State Management
+## 10. State Management
 
 ### Data Flow
 
@@ -232,7 +414,7 @@ Zustand (client-only UI state)
 
 ---
 
-## Offline & Caching Strategy
+## 11. Offline & Caching Strategy
 
 ### Service Worker Caching
 
@@ -248,11 +430,11 @@ Zustand (client-only UI state)
 - TanStack Query `persistQueryClient` saves last-fetched data to IndexedDB
 - Read-only access to last-synced data while offline
 - Mutations are queued and replayed when online
-- User sees a subtle "offline" banner
+- User sees a subtle "offline" banner using `--warning` at 15% opacity
 
 ---
 
-## Notification Architecture
+## 12. Notification Architecture
 
 ### Local Notifications (Scheduled)
 
@@ -284,7 +466,7 @@ Send push via Web Push API (PWA) or FCM (Capacitor)
 
 ---
 
-## Export Architecture
+## 13. Export Architecture
 
 ### Data Flow for Exports
 
@@ -324,7 +506,7 @@ Data formatted into report structure
 
 ---
 
-## Supabase Integration
+## 14. Supabase Integration
 
 ### Client Setup
 
@@ -381,7 +563,7 @@ CREATE POLICY "user_medications_all"
 
 ---
 
-## Authentication Architecture
+## 15. Authentication Architecture
 
 ### Auth Methods & Priority
 
@@ -450,7 +632,7 @@ Next.js Middleware checks Supabase session cookie
 │  └──────────────────────┘│
 │                          │
 │  ┌──────────────────────┐│
-│  │     Sign In          ││
+│  │     Sign In          ││  ← gradient button
 │  └──────────────────────┘│
 │                          │
 │  ──── or ────            │
@@ -558,7 +740,7 @@ export const config = {
 ```typescript
 // providers/auth-provider.tsx
 'use client'
-import { createBrowserClient } from '@supabase/ssr'  // NOT the SSR server client
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
@@ -767,7 +949,7 @@ MFA enabled — on next login, user verifies TOTP code after password/passkey
 
 ---
 
-## Mobile-First Design Principles
+## 16. Mobile-First Design Principles
 
 ### Touch Targets
 
@@ -775,20 +957,12 @@ MFA enabled — on next login, user verifies TOTP code after password/passkey
 - FAB is **56x56px** with adequate margin from bottom bar
 - Form inputs have large padding (`py-3` minimum on mobile)
 
-### Typography Scale
-
-| Element | Mobile | Desktop |
-|---|---|---|
-| H1 (page title) | `text-2xl` (24px) | `text-3xl` (30px) |
-| H2 (section) | `text-xl` (20px) | `text-2xl` (24px) |
-| Body | `text-base` (16px) | `text-base` (16px) |
-| Small / meta | `text-sm` (14px) | `text-sm` (14px) |
-| Data values | `text-3xl` (30px) | `text-4xl` (36px) |
-
 ### Spacing
 
 - Mobile: `p-4` (16px) page padding, `gap-3` (12px) between cards
 - Desktop: `p-8` (32px) page padding, `gap-4` (16px) between cards
+- Stacking cards use `space-y-3` on mobile, `space-y-4` on desktop
+- Section separation uses `space-y-8` (32px) — generous whitespace over border lines
 
 ### Gesture Support
 
@@ -801,7 +975,7 @@ MFA enabled — on next login, user verifies TOTP code after password/passkey
 
 ---
 
-## Performance Targets
+## 17. Performance Targets
 
 | Metric | Target |
 |---|---|
@@ -824,7 +998,7 @@ MFA enabled — on next login, user verifies TOTP code after password/passkey
 
 ---
 
-## Error Handling
+## 18. Error Handling
 
 ### Error Boundaries
 
@@ -859,58 +1033,23 @@ src/app/
 
 ### bcryptjs Performance Note
 
-`bcryptjs` runs in the browser for PIN hashing. With 10 salt rounds, hashing takes ~300ms and verification ~100ms. This is acceptable for a 4-digit PIN unlock. If performance is a concern, switch to a faster hash like SHA-256 (less secure but still adequate for a local convenience lock):
+`bcryptjs` runs in the browser for PIN hashing. With 10 salt rounds, hashing takes ~300ms and verification ~100ms. This is acceptable for a 4-digit PIN unlock. If performance is a concern, switch to a faster hash like SHA-256 (less secure but still adequate for a local convenience lock).
 
 ---
 
-## Color Palette & Theming
-
-### Light Theme (Default)
-
-```
-Background:  white / gray-50
-Surface:     white
-Primary:     blue-600 (#2563EB)
-Secondary:   teal-500 (#14B8A6)
-Sugar:       orange-500 (#F97316)
-BP:          red-500 (#EF4444)
-Water:       sky-500 (#0EA5E9)
-Medication:  violet-500 (#8B5CF6)
-Success:     green-500 (#22C55E)
-Warning:     yellow-500 (#EAB308)
-Danger:      red-500 (#EF4444)
-```
-
-### Dark Theme
-
-```
-Background:  gray-950 / gray-900
-Surface:     gray-800
-Primary:     blue-400 (#60A5FA)
-Secondary:   teal-400 (#2DD4BF)
-...same role mappings, adjusted luminance
-```
-
-### Theme Toggle
-
-- Default: `system` (respects `prefers-color-scheme`)
-- User can override to `light` or `dark` in Settings
-- Implemented via Tailwind `darkMode: 'class'` + `next-themes`
-
----
-
-## Accessibility
+## 19. Accessibility
 
 - All forms use proper `<label>` elements and `aria-*` attributes
 - Color is never the sole indicator of meaning (supplement with icons + text)
 - Charts have `aria-label` descriptions and support `prefers-reduced-motion`
 - Navigation uses `aria-current="page"` for active tab
-- Focus indicators visible on all interactive elements
+- Focus indicators visible on all interactive elements (use ghost border on focus, not outline)
 - Touch targets meet WCAG 2.1 minimum (44x44px)
+- Surface tier contrast ratios maintain minimum 4.5:1 for text, 3:1 for large text
 
 ---
 
-## Deployment Pipeline
+## 20. Deployment Pipeline
 
 ```
 Git Push (main branch)
@@ -943,7 +1082,7 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 
 ---
 
-## File Structure (Full)
+## 21. File Structure (Full)
 
 ```
 medtracker/
@@ -999,15 +1138,11 @@ medtracker/
 │   │   └── use-mfa.ts                  # TOTP enrollment + verification
 │   ├── lib/
 │   │   ├── supabase.ts                # Supabase SSR server client
-│   │   ├── supabase-browser.ts        # Supabase browser client (for client components)
+│   │   ├── supabase-browser.ts        # Supabase browser client
 │   │   ├── utils.ts                   # formatDate, cn(), etc.
 │   │   ├── constants.ts               # meal slots, units, goals
 │   │   ├── notifications.ts           # Notification scheduling helpers
 │   │   └── pin-storage.ts             # PIN hash read/write to IndexedDB
-│   ├── db/
-│   │   ├── schema.ts                  # Drizzle / Prisma schema
-│   │   └── index.ts                   # DB client
-│   ├── middleware.ts                  # Route protection (session check + redirect)
 │   ├── providers/
 │   │   ├── auth-provider.tsx          # Session context + user state
 │   │   ├── pin-provider.tsx           # PIN lock state context
@@ -1030,7 +1165,6 @@ medtracker/
 │   ├── android/
 │   └── ios/
 ├── tauri/                              # Tauri desktop (optional future)
-├── drizzle.config.ts / prisma.schema
 ├── next.config.ts
 ├── tailwind.config.ts
 ├── tsconfig.json
@@ -1039,7 +1173,7 @@ medtracker/
 
 ---
 
-## Key Dependencies
+## 22. Key Dependencies
 
 ```json
 {
@@ -1067,9 +1201,6 @@ medtracker/
     "autoprefixer": "^10",
     "postcss": "^8",
     "@serwist/next": "^9",
-    "drizzle-kit": "^0.30",
-    "drizzle-orm": "^0.38",
-    "postgres": "^3.4",
     "pdfkit": "^0.16",
     "@capacitor/cli": "^7",
     "@capacitor/android": "^7",
@@ -1078,18 +1209,92 @@ medtracker/
 }
 ```
 
-> **Note**: The `postgres` package is the driver for Drizzle ORM. If deploying on Vercel Edge Functions, use `@neondatabase/serverless` instead. If using Prisma instead of Drizzle, replace `drizzle-kit`, `drizzle-orm`, and `postgres` with `prisma` and `@prisma/client`.
->
-> **Note**: `recharts` is listed for charts. If you prefer Chart.js, replace with `chart.js` and `react-chartjs-2`.
->
-> **Note**: `pdfkit` is used in Vercel Serverless Functions for PDF generation. It requires a standalone build configuration (`vercel.json` or function config).
-
 ---
 
-## Referenced Documents
+## 23. Referenced Documents
 
 | Document | Description |
 |---|---|
 | [`REQUIREMENTS.md`](./REQUIREMENTS.md) | Full user requirements & implementation tasks |
 | [`DB_DESIGN.md`](./DB_DESIGN.md) | PostgreSQL schema, indexes, RLS policies |
-| [`DESIGN.md`](./DESIGN.md) | Application design — this document |
+| [`PENDING.md`](./PENDING.md) | Implementation plan & task tracking |
+
+---
+
+## 24. Migration Plan: Current → Clinical Sanctuary
+
+### Phase 1: CSS Tokens & Globals (Estimated: 2-3 hrs)
+
+| Step | File | Change | Effort |
+|---|---|---|---|
+| 1.1 | `src/app/globals.css` | Replace OKLCH tokens with Clinical Sanctuary hex palette (`#005387`, `#1B6CA8`, surface layers). Add surface hierarchy tokens. Remove global `* { @apply border-border }`. | 45 min |
+| 1.2 | `src/app/globals.css` | Add ambient shadow tokens (Level 1-3). Add ghost border token (`outline_variant` at 15%). Add `backdrop-blur-xl` utility. | 20 min |
+| 1.3 | `src/app/globals.css` | Add editorial typography scale (`display-lg` through `label-xs`). Set Inter as font family. | 20 min |
+| 1.4 | `tailwind.config.ts` (or `globals.css`) | Register surface tokens as Tailwind theme extensions. Map `bg-surface` etc. | 15 min |
+| 1.5 | `src/app/layout.tsx` | Update metadata `themeColor` to `#005387`. Load Inter font via `next/font`. | 15 min |
+
+### Phase 2: Layout & Navigation (Estimated: 2 hrs)
+
+| Step | File | Change | Effort |
+|---|---|---|---|
+| 2.1 | Sidebar component | Remove `border-r`. Change background to `--surface_container`. Add glassmorphism treatment if floating. | 30 min |
+| 2.2 | Top nav / header | Add glassmorphism: `bg-white/80 backdrop-blur-xl`. Remove `border-b`. | 20 min |
+| 2.3 | Mobile bottom nav | Same glassmorphism treatment. Remove top border. | 15 min |
+| 2.4 | Page layouts | Change page backgrounds from `bg-background` to `bg-surface_container_low`. Adjust padding to use the space-as-separator principle. | 30 min |
+
+### Phase 3: Component Overhauls (Estimated: 3-4 hrs)
+
+| Step | File | Change | Effort |
+|---|---|---|---|
+| 3.1 | `src/components/ui/button.tsx` | Add gradient primary variant. Add pill shape (`rounded-full`) variant. Add ghost border variant. | 45 min |
+| 3.2 | `src/components/ui/card.tsx` | Remove `shadow-card` (surface nesting replaces it). Ensure no borders. | 20 min |
+| 3.3 | `src/components/ui/badge.tsx` | Add pill shape, color-coded variants (taken/skipped/pending), interactive hover states. | 30 min |
+| 3.4 | `src/components/ui/input.tsx` | Replace `border border-input` with ghost border (15% opacity). Update focus ring to 2px primary + 4px glow. | 20 min |
+| 3.5 | `src/components/ui/dialog.tsx` | Add glassmorphism to dialog content panel. Update shadow to ambient Level 3. | 20 min |
+| 3.6 | `src/components/ui/select.tsx`, `textarea.tsx` | Same ghost border treatment as input. | 15 min |
+
+### Phase 4: Page-Level Visual Refresh (Estimated: 3-4 hrs)
+
+| Step | Page | Change | Effort |
+|---|---|---|---|
+| 4.1 | Dashboard | Apply new surface hierarchy. Use display typography for key metrics. Remove card borders. | 45 min |
+| 4.2 | Medications | Add gradient to "Add Medication" button. Apply new badge/chip styling. Use editorial typography. | 30 min |
+| 4.3 | Blood Sugar, Vitals | Same pattern. Replace all border-based separation with tonal shifts. | 30 min each |
+| 4.4 | Water, Activity | Same pattern. | 20 min each |
+| 4.5 | Settings, Reports | Same pattern. | 30 min each |
+| 4.6 | Auth pages (login, PIN) | Apply gradient buttons. Update card/input styling to match system. | 30 min |
+
+### Phase 5: QA & Polish (Estimated: 2 hrs)
+
+| Step | Task | Effort |
+|---|---|---|
+| 5.1 | Audit all pages for "1px border" violations | 30 min |
+| 5.2 | Verify dark mode equivalents for all new tokens | 20 min |
+| 5.3 | Check contrast ratios (WCAG 2.1 AA) for all new color pairs | 20 min |
+| 5.4 | Test glassmorphism on Safari (backdrop-filter compatibility) | 15 min |
+| 5.5 | Verify ambient shadows render correctly cross-browser | 15 min |
+| 5.6 | Run Lighthouse audit — verify no regressions | 20 min |
+
+### Migration Order & Priority
+
+```
+P0 (Phase 1):    CSS tokens + globals — foundation for everything else
+P1 (Phase 2):    Layout + navigation — establishes the visual frame
+P1 (Phase 3):    Component overhauls — reusable UI elements
+P2 (Phase 4):    Page-level refresh — apply tokens to individual pages
+P3 (Phase 5):    QA + polish — catch edge cases, verify accessibility
+```
+
+### Files Untouched (No Visual Changes Needed)
+
+These files contain pure logic and need no styling changes:
+- All `hooks/` files
+- All `stores/` files
+- All `lib/` files (except `utils.ts` if `cn()` changes)
+- All `types/` files
+- `src/middleware.ts`
+- All `providers/` files (unless layout changes needed)
+- `supabase/` directory
+- All config files (except `globals.css`)
+
+### Total Estimated Effort: 12-15 hours
