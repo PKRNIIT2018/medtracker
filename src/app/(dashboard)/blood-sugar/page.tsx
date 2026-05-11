@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useBloodSugarReadings, useCreateBloodSugar, useUpdateBloodSugar, useDeleteBloodSugar } from "@/features/blood-sugar/hooks";
-import { bloodSugarSchema, type BloodSugarFormData, mealSlotLabels } from "@/features/blood-sugar/schema";
+import { bloodSugarSchema, type BloodSugarFormData, mealSlotLabels, getDefaultMealSlot } from "@/features/blood-sugar/schema";
 import { BloodSugarForm } from "@/features/blood-sugar/components/BloodSugarForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,12 +19,14 @@ import { cn } from "@/lib/utils";
 import type { BloodSugar } from "@/types/database";
 
 const MEAL_SLOT_ORDER: string[] = [
+  "fasting",
   "before_breakfast",
   "after_breakfast",
   "before_lunch",
   "after_lunch",
   "before_dinner",
   "after_dinner",
+  "bedtime",
 ];
 
 function formatDateHeader(date: string): string {
@@ -46,20 +48,22 @@ export default function BloodSugarPage() {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const initialTime = format(new Date(), "HH:mm");
   const [form, setForm] = useState<BloodSugarFormData>({
     reading_date: format(new Date(), "yyyy-MM-dd"),
-    reading_time: format(new Date(), "HH:mm"),
-    meal_slot: "before_breakfast",
+    reading_time: initialTime,
+    meal_slot: getDefaultMealSlot(initialTime) as BloodSugarFormData["meal_slot"],
     level: undefined as unknown as number,
     notes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function resetForm() {
+    const time = format(new Date(), "HH:mm");
     setForm({
       reading_date: format(new Date(), "yyyy-MM-dd"),
-      reading_time: format(new Date(), "HH:mm"),
-      meal_slot: "before_breakfast",
+      reading_time: time,
+      meal_slot: getDefaultMealSlot(time) as BloodSugarFormData["meal_slot"],
       level: undefined as unknown as number,
       notes: "",
     });
