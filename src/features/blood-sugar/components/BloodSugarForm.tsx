@@ -14,10 +14,9 @@ interface BloodSugarFormProps {
   errors: Record<string, string>;
   isPending: boolean;
   submitLabel: string;
-  unit?: string;
 }
 
-export function BloodSugarForm({ form, onChange, onSubmit, errors, isPending, submitLabel, unit = "mg/dL" }: BloodSugarFormProps) {
+export function BloodSugarForm({ form, onChange, onSubmit, errors, isPending, submitLabel }: BloodSugarFormProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -42,9 +41,9 @@ export function BloodSugarForm({ form, onChange, onSubmit, errors, isPending, su
         </Select>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="bs-level">Level ({unit})</Label>
-        <Input id="bs-level" type="number" value={form.level_mgdl || ""} onChange={(e) => onChange({ ...form, level_mgdl: Number(e.target.value) })} />
-        {errors.level_mgdl && <p className="text-sm text-destructive">{errors.level_mgdl}</p>}
+        <Label htmlFor="bs-level">Level (mmol/L)</Label>
+        <Input id="bs-level" type="number" step="0.1" value={form.level || ""} onChange={(e) => onChange({ ...form, level: Number(e.target.value) })} />
+        {errors.level && <p className="text-sm text-destructive">{errors.level}</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor="bs-notes">Notes</Label>

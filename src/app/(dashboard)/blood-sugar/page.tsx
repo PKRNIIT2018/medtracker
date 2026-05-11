@@ -1,23 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { useBloodSugarReadings, useCreateBloodSugar, useUpdateBloodSugar, useDeleteBloodSugar } from "@/features/blood-sugar/hooks";
 import { bloodSugarSchema, type BloodSugarFormData, mealSlotLabels } from "@/features/blood-sugar/schema";
 import { BloodSugarForm } from "@/features/blood-sugar/components/BloodSugarForm";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Activity, Pencil, Trash2, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { summarizeBloodSugar } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
-import { getSugarLevel, sugarBorderColors, sugarBadgeColors, sugarIconConfig, toDisplayUnit, toMgdl } from "@/lib/vitals-colors";
+import { getSugarLevel, sugarBorderColors, sugarBadgeColors, sugarIconConfig } from "@/lib/vitals-colors";
 import { cn } from "@/lib/utils";
 import type { BloodSugar } from "@/types/database";
 
@@ -42,19 +39,10 @@ function toastError(err: unknown) {
 }
 
 export default function BloodSugarPage() {
-  const supabase = createClient();
   const { data: readings, isLoading, error, refetch } = useBloodSugarReadings();
   const createReading = useCreateBloodSugar();
   const updateReading = useUpdateBloodSugar();
   const deleteReading = useDeleteBloodSugar();
-  const { data: settings } = useQuery({
-    queryKey: ["user-settings"],
-    queryFn: async () => {
-      const { data } = await supabase.from("user_settings").select("sugar_unit").single();
-      return data;
-    },
-  });
-  const sugarUnit = settings?.sugar_unit ?? "mmol/L";
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,7 +50,7 @@ export default function BloodSugarPage() {
     reading_date: format(new Date(), "yyyy-MM-dd"),
     reading_time: format(new Date(), "HH:mm"),
     meal_slot: "before_breakfast",
-    level_mgdl: undefined as unknown as number,
+    level: undefined as unknown as number,
     notes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -72,7 +60,7 @@ export default function BloodSugarPage() {
       reading_date: format(new Date(), "yyyy-MM-dd"),
       reading_time: format(new Date(), "HH:mm"),
       meal_slot: "before_breakfast",
-      level_mgdl: undefined as unknown as number,
+      level: undefined as unknown as number,
       notes: "",
     });
   }
@@ -93,17 +81,14 @@ export default function BloodSugarPage() {
     const data = validate();
     if (!data) return;
 
-    createReading.mutate(
-      { ...data, level_mgdl: toMgdl(data.level_mgdl, sugarUnit) },
-      {
-        onSuccess: () => {
-          toast.success("Reading added");
-          setOpen(false);
-          resetForm();
-        },
-        onError: toastError,
+    createReading.mutate(data, {
+      onSuccess: () => {
+        toast.success("Reading added");
+        setOpen(false);
+        resetForm();
       },
-    );
+      onError: toastError,
+    });
   }
 
   function handleEditSubmit(e: React.FormEvent) {
@@ -112,7 +97,7 @@ export default function BloodSugarPage() {
     if (!data || !editingId) return;
 
     updateReading.mutate(
-      { id: editingId, ...data, level_mgdl: toMgdl(data.level_mgdl, sugarUnit) },
+      { id: editingId, ...data },
       {
         onSuccess: () => {
           toast.success("Reading updated");
@@ -131,7 +116,7 @@ export default function BloodSugarPage() {
       reading_date: r.reading_date,
       reading_time: r.reading_time ?? "",
       meal_slot: r.meal_slot,
-      level_mgdl: toDisplayUnit(r.level_mgdl, sugarUnit),
+      level: r.level,
       notes: r.notes ?? "",
     });
     setEditOpen(true);
@@ -158,21 +143,21 @@ export default function BloodSugarPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Add Blood Sugar Reading</DialogTitle></DialogHeader>
-              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleSubmit} errors={errors} isPending={createReading.isPending} submitLabel="Save Reading" unit={sugarUnit} />
+              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleSubmit} errors={errors} isPending={createReading.isPending} submitLabel="Save Reading" />
             </DialogContent>
           </Dialog>
 
           <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingId(null); resetForm(); } }}>
             <DialogContent>
               <DialogHeader><DialogTitle>Edit Blood Sugar Reading</DialogTitle></DialogHeader>
-              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleEditSubmit} errors={errors} isPending={updateReading.isPending} submitLabel="Update Reading" unit={sugarUnit} />
+              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleEditSubmit} errors={errors} isPending={updateReading.isPending} submitLabel="Update Reading" />
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
       {readings && readings.length > 0 && (
-        <SummaryCard summary={summarizeBloodSugar(readings[0].level_mgdl, readings[0].meal_slot, readings.length > 1 ? readings[1] : undefined, sugarUnit)} />
+        <SummaryCard summary={summarizeBloodSugar(readings[0].level, readings[0].meal_slot, readings.length > 1 ? readings[1] : undefined)} />
       )}
 
       {error ? (
@@ -248,54 +233,54 @@ export default function BloodSugarPage() {
         return (
           <div className="space-y-6">
             {sortedDates.map((date) => (
-<div key={date}>
-                    <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      {formatDateHeader(date)}
-                    </h2>
-                    <div className="space-y-2">
-                      {grouped[date].map((r) => {
-                        const status = getSugarLevel(r.level_mgdl);
-                        return (
-                          <Card key={r.id} className={cn("border-l-4 pl-0", sugarBorderColors[status])}>
-                            <CardContent className="flex items-center justify-between py-3">
-                              <div className="flex items-center gap-3">
-                                <span className={cn("inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold min-w-[3.5rem]", sugarBadgeColors[status])}>
-                                  {toDisplayUnit(r.level_mgdl, sugarUnit)}
-                                </span>
-                                <div>
-                                  <p className="text-sm font-medium">{mealSlotLabels[r.meal_slot]}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {r.reading_time && format(parseISO("2000-01-01T" + r.reading_time), "h:mm a")}
-                                  </p>
-                                  {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
+              <div key={date}>
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  {formatDateHeader(date)}
+                </h2>
+                <div className="space-y-2">
+                  {grouped[date].map((r) => {
+                    const status = getSugarLevel(r.level);
+                    return (
+                      <Card key={r.id} className={cn("border-l-4 pl-0", sugarBorderColors[status])}>
+                        <CardContent className="flex items-center justify-between py-3">
+                          <div className="flex items-center gap-3">
+                            <span className={cn("inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold min-w-[3.5rem]", sugarBadgeColors[status])}>
+                              {r.level}
+                            </span>
+                            <div>
+                              <p className="text-sm font-medium">{mealSlotLabels[r.meal_slot]}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {r.reading_time && format(parseISO("2000-01-01T" + r.reading_time), "h:mm a")}
+                              </p>
+                              {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <StatusIcon status={status} />
+                            <Button variant="ghost" size="icon" aria-label="Edit reading" onClick={() => openEdit(r)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Reading</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this blood sugar reading? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <div className="flex justify-end gap-2">
+                                  <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <StatusIcon status={status} />
-                                <Button variant="ghost" size="icon" aria-label="Edit reading" onClick={() => openEdit(r)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger render={<Button variant="ghost" size="icon" aria-label="Delete reading"><Trash2 className="h-4 w-4" /></Button>} />
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Reading</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this blood sugar reading? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <div className="flex justify-end gap-2">
-                                      <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction render={<Button variant="destructive" onClick={() => deleteReading.mutate(r.id)} />}>Delete</AlertDialogAction>
-                                    </div>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
             ))}

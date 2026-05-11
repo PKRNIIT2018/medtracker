@@ -54,7 +54,7 @@ export interface BloodSugar {
   reading_date: string
   reading_time: string | null
   meal_slot: MealSlot
-  level_mgdl: number
+  level: number
   notes: string | null
   created_at: string
   deleted_at: string | null

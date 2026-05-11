@@ -97,7 +97,7 @@ export default function ReportsPage() {
       taken_date: "Date",
       taken_time: "Time",
       meal_slot: "Meal Slot",
-      level_mgdl: "Level (mg/dL)",
+      level: "Level (mmol/L)",
       systolic: "Systolic",
       diastolic: "Diastolic",
       heart_rate: "Heart Rate",

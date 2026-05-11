@@ -9,7 +9,7 @@ export interface BloodSugarReading {
   date: string;
   time: string | null;
   mealSlot: MealSlot;
-  levelMgdl: number;
+  level: number;
   notes: string | null;
 }
 

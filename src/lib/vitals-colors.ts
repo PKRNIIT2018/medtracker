@@ -66,8 +66,8 @@ export function toDisplayUnit(value: number, unit: string): number {
 export type SugarLevel = "normal" | "low" | "high";
 
 export function getSugarLevel(level: number): SugarLevel {
-  if (level < 70) return "low";
-  if (level > 140) return "high";
+  if (level < 3.9) return "low";
+  if (level > 7.8) return "high";
   return "normal";
 }
 

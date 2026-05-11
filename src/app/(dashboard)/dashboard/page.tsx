@@ -13,7 +13,7 @@ import { Plus, Activity, Droplets, Heart, Pill, Calendar, AlertTriangle } from "
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { getBpBorderColor, getBpStatusLabel, getSugarLevel, toDisplayUnit } from "@/lib/vitals-colors";
+import { getBpBorderColor, getBpStatusLabel, getSugarLevel } from "@/lib/vitals-colors";
 
 const supabase = createClient();
 
@@ -85,11 +85,10 @@ export default function DashboardPage() {
   const { data: settings } = useQuery({
     queryKey: ["user-settings"],
     queryFn: async () => {
-      const { data } = await supabase.from("user_settings").select("daily_water_goal_ml, sugar_unit").single();
-      return data ?? { daily_water_goal_ml: null, sugar_unit: "mmol/L" };
+      const { data } = await supabase.from("user_settings").select("daily_water_goal_ml").single();
+      return data ?? { daily_water_goal_ml: null };
     },
   });
-  const sugarUnit = settings?.sugar_unit ?? "mmol/L";
 
   const { data: appointments } = useQuery({
     queryKey: ["appointments"],
@@ -104,39 +103,33 @@ export default function DashboardPage() {
 
   const latestSugar = sugarReadings?.[0];
   const previousSugar = sugarReadings?.[1];
-  const sugarStatus = latestSugar ? getSugarLevel(latestSugar.level_mgdl) : "normal";
-  const sugarTrend = latestSugar && previousSugar ? (latestSugar.level_mgdl - previousSugar.level_mgdl > 5 ? " up" : latestSugar.level_mgdl - previousSugar.level_mgdl < -5 ? " down" : " stable") : "";
-
-  const sugarSparkline = getLast7Days().map(({ date, label }) => {
-    const day = (sugarReadings ?? []).filter((r) => r.reading_date === date);
-    const avg = day.length ? Math.round(day.reduce((s, r) => s + r.level_mgdl, 0) / day.length) : null;
-    return { label, value: avg };
+  const sugarStatus = latestSugar ? getSugarLevel(latestSugar.level) : "normal";
+  const sugarTrend = latestSugar && previousSugar ? (latestSugar.level - previousSugar.level > 0.3 ? " up" : latestSugar.level - previousSugar.level < -0.3 ? " down" : " stable") : "";
+  const sugarSparkline = getLast7Days().map((d) => {
+    const day = sugarReadings?.filter((r) => r.reading_date === d.date) ?? [];
+    const avg = day.length ? Math.round(day.reduce((s, r) => s + r.level, 0) / day.length * 10) / 10 : null;
+    return { value: avg };
   });
   const sugarColor = sugarStatus === "normal" ? "#22c55e" : "#ef4444";
 
   const todayWater = waterEntries?.filter((e) => e.entry_date === today).reduce((s, e) => s + Number(e.amount_ml), 0) ?? 0;
   const waterGoal = settings?.daily_water_goal_ml ?? 2000;
   const waterPct = Math.min((todayWater / waterGoal) * 100, 100);
-
   const waterSparkline = getLast7Days().map(({ date, label }) => {
     const total = (waterEntries ?? []).filter((e) => e.entry_date === date).reduce((s, e) => s + Number(e.amount_ml), 0);
     return { label, value: total || null };
   });
 
   const latestBP = bpReadings?.[0];
-
   const bpSparkline = getLast7Days().map(({ date, label }) => {
     const day = (bpReadings ?? []).filter((r) => r.reading_date === date);
-    return { label, value: day[0]?.systolic ?? null };
+    const avg = day.length ? Math.round(day.reduce((s, r) => s + r.systolic, 0) / day.length) : null;
+    return { label, value: avg };
   });
 
-  const upcomingAppts = (appointments ?? []).filter((a) => {
-    const diff = Math.ceil((new Date(a.appointment_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    return diff >= 0 && diff <= 7;
-  });
-
-  const abnormalSugar = sugarReadings?.find((r) => getSugarLevel(r.level_mgdl) !== "normal");
+  const abnormalSugar = sugarReadings?.find((r) => getSugarLevel(r.level) !== "normal");
   const abnormalBP = bpReadings?.find((r) => getBpStatusLabel(r.systolic, r.diastolic) !== "Normal");
+  const upcomingAppts = appointments ?? [];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -160,7 +153,7 @@ export default function DashboardPage() {
               <Card className="border-l-4 border-l-red-400">
                 <CardContent className="py-3">
                   <p className="text-xs text-muted-foreground">Blood Sugar</p>
-                  <p className="text-sm font-medium">Latest reading: {toDisplayUnit(abnormalSugar.level_mgdl, sugarUnit)} {sugarUnit} — <span className="text-red-500">{getSugarLevel(abnormalSugar.level_mgdl) === "low" ? "Low" : "High"}</span></p>
+                  <p className="text-sm font-medium">Latest reading: {abnormalSugar.level} mmol/L — <span className="text-red-500">{getSugarLevel(abnormalSugar.level) === "low" ? "Low" : "High"}</span></p>
                   <p className="text-xs text-muted-foreground mt-1">{format(parseISO(abnormalSugar.reading_date), "MMM d, yyyy")}</p>
                 </CardContent>
               </Card>
@@ -205,8 +198,8 @@ export default function DashboardPage() {
           {latestSugar ? (
             <>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">{toDisplayUnit(latestSugar.level_mgdl, sugarUnit)}</span>
-                <span className="text-sm font-normal text-muted-foreground">{sugarUnit}</span>
+                <span className="text-2xl font-bold">{latestSugar.level}</span>
+                <span className="text-sm font-normal text-muted-foreground">mmol/L</span>
                 {sugarTrend && <span className={cn("text-sm font-medium", sugarTrend === " up" ? "text-red-500" : sugarTrend === " down" ? "text-green-500" : "text-muted-foreground")} aria-label={`Trend: ${sugarTrend.trim()}`}>{sugarTrend}</span>}
               </div>
               <p className="text-xs text-muted-foreground">

@@ -54,23 +54,23 @@
   },
   "blood_sugar": {
     "fasting": {
-      "unit": "mg/dL",
+      "unit": "mmol/L",
       "levels": [
-        { "min": 0, "max": 54, "label": "very_low", "summary": "Your fasting blood sugar is dangerously low at {value} mg/dL. Consume fast-acting sugar immediately and seek medical help." },
-        { "min": 54, "max": 70, "label": "low", "summary": "Your fasting blood sugar is low at {value} mg/dL. Eat or drink something sugary and recheck." },
-        { "min": 70, "max": 100, "label": "normal", "summary": "Your fasting blood sugar is normal at {value} mg/dL." },
-        { "min": 100, "max": 126, "label": "elevated", "summary": "Your fasting blood sugar is elevated at {value} mg/dL. This may indicate prediabetes; consult your doctor." },
-        { "min": 126, "max": 999, "label": "high", "summary": "Your fasting blood sugar is high at {value} mg/dL. This may indicate diabetes; please consult your doctor." }
+        { "min": 0, "max": 3.0, "label": "very_low", "summary": "Your fasting blood sugar is dangerously low at {value} mmol/L. Consume fast-acting sugar immediately and seek medical help." },
+        { "min": 3.0, "max": 3.9, "label": "low", "summary": "Your fasting blood sugar is low at {value} mmol/L. Eat or drink something sugary and recheck." },
+        { "min": 3.9, "max": 5.6, "label": "normal", "summary": "Your fasting blood sugar is normal at {value} mmol/L." },
+        { "min": 5.6, "max": 7.0, "label": "elevated", "summary": "Your fasting blood sugar is elevated at {value} mmol/L. This may indicate prediabetes; consult your doctor." },
+        { "min": 7.0, "max": 60, "label": "high", "summary": "Your fasting blood sugar is high at {value} mmol/L. This may indicate diabetes; please consult your doctor." }
       ]
     },
     "after_meal": {
-      "unit": "mg/dL",
+      "unit": "mmol/L",
       "levels": [
-        { "min": 0, "max": 54, "label": "very_low", "summary": "Your blood sugar is dangerously low at {value} mg/dL. Consume fast-acting sugar immediately and seek medical help." },
-        { "min": 54, "max": 70, "label": "low", "summary": "Your blood sugar is low at {value} mg/dL. Eat or drink something sugary and recheck." },
-        { "min": 70, "max": 140, "label": "normal", "summary": "Your post-meal blood sugar is normal at {value} mg/dL." },
-        { "min": 140, "max": 200, "label": "elevated", "summary": "Your post-meal blood sugar is elevated at {value} mg/dL. Monitor and discuss with your doctor." },
-        { "min": 200, "max": 999, "label": "high", "summary": "Your post-meal blood sugar is high at {value} mg/dL. Please consult your doctor." }
+        { "min": 0, "max": 3.0, "label": "very_low", "summary": "Your blood sugar is dangerously low at {value} mmol/L. Consume fast-acting sugar immediately and seek medical help." },
+        { "min": 3.0, "max": 3.9, "label": "low", "summary": "Your blood sugar is low at {value} mmol/L. Eat or drink something sugary and recheck." },
+        { "min": 3.9, "max": 7.8, "label": "normal", "summary": "Your post-meal blood sugar is normal at {value} mmol/L." },
+        { "min": 7.8, "max": 11.0, "label": "elevated", "summary": "Your post-meal blood sugar is elevated at {value} mmol/L. Monitor and discuss with your doctor." },
+        { "min": 11.0, "max": 60, "label": "high", "summary": "Your post-meal blood sugar is high at {value} mmol/L. Please consult your doctor." }
       ]
     }
   },

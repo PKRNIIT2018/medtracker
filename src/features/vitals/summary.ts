@@ -1,5 +1,4 @@
 import levels from "@/config/vitals-levels.json";
-import { toDisplayUnit } from "@/lib/vitals-colors";
 
 export interface VitalsSummary {
   category: string;
@@ -109,18 +108,15 @@ export function summarizeBloodPressure(
 }
 
 export function summarizeBloodSugar(
-  levelMgdl: number,
+  level: number,
   mealSlot: string,
-  prev?: { level_mgdl: number },
-  unit: string = "mg/dL",
+  prev?: { level: number },
 ): VitalsSummary {
+  const unit = "mmol/L";
   const isFasting = mealSlot.startsWith("before");
   const config = isFasting ? levels.blood_sugar.fasting : levels.blood_sugar.after_meal;
-  const level = findLevel(config, levelMgdl);
-  const trend = getTrend(levelMgdl, prev?.level_mgdl, true);
-
-  const displayValue = toDisplayUnit(levelMgdl, unit);
-  const prevDisplayValue = prev ? toDisplayUnit(prev.level_mgdl, unit) : undefined;
+  const levelInfo = findLevel(config, level);
+  const trend = getTrend(level, prev?.level, true);
 
   const labelMap: Record<string, string> = {
     very_low: "🆘 Very Low",
@@ -132,10 +128,10 @@ export function summarizeBloodSugar(
 
   return {
     category: "Blood Sugar",
-    label: labelMap[level?.label ?? ""] ?? level?.label ?? "Unknown",
-    summary: level?.summary.replace("{value}", String(displayValue)).replace("{unit}", unit) ?? "",
-    currentValue: `${displayValue} ${unit}`,
-    previousValue: prevDisplayValue !== undefined ? `${prevDisplayValue} ${unit}` : undefined,
+    label: labelMap[levelInfo?.label ?? ""] ?? levelInfo?.label ?? "Unknown",
+    summary: levelInfo?.summary.replace("{value}", String(level)).replace("{unit}", unit) ?? "",
+    currentValue: `${level} ${unit}`,
+    previousValue: prev !== undefined ? `${prev.level} ${unit}` : undefined,
     trend,
   };
 }
