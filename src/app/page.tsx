@@ -1,23 +1,37 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+"use client";
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const { code } = await searchParams;
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
-  if (code && typeof code === "string") {
-    redirect(`/auth/callback?code=${code}`);
-  }
+export default function Home() {
+  const router = useRouter();
 
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
 
-  if (data?.user) {
-    redirect("/dashboard");
-  }
+    if (code) {
+      const supabase = createClient();
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) {
+          router.push("/dashboard");
+        } else {
+          router.push("/login?error=Could not authenticate user");
+        }
+      });
+      return;
+    }
 
-  redirect("/login");
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        router.push("/dashboard");
+      } else {
+        router.push("/login");
+      }
+    });
+  }, [router]);
+
+  return null;
 }
