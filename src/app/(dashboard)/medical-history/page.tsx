@@ -43,29 +43,31 @@ export default function MedicalHistoryPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-3xl font-bold tracking-tight">Medical History</h1><p className="text-muted-foreground">Track conditions, surgeries, and allergies</p></div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setCategory("condition"); setTitle(""); setDescription(""); setEventDate(""); } }}>
-          <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Entry</DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Medical Entry</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2"><Label>Category</Label>
-                <Select value={category} onValueChange={(v) => v && setCategory(v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(categoryMeta).map(([k, v]) => (<SelectItem key={k} value={k}>{v.label}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
-              <div className="space-y-2"><Label>Description</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-              <div className="space-y-2"><Label>Date (optional)</Label><Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /></div>
-              <Button type="submit" className="w-full" disabled={createEntry.isPending}>Save</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div><h1 className="text-3xl font-bold tracking-tight">Medical History</h1><p className="text-muted-foreground">Track conditions, surgeries, and allergies</p></div>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setCategory("condition"); setTitle(""); setDescription(""); setEventDate(""); } }}>
+            <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Entry</DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Medical Entry</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2"><Label>Category</Label>
+                  <Select value={category} onValueChange={(v) => v && setCategory(v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(categoryMeta).map(([k, v]) => (<SelectItem key={k} value={k}>{v.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
+                <div className="space-y-2"><Label>Description</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Date (optional)</Label><Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /></div>
+                <Button type="submit" className="w-full" disabled={createEntry.isPending}>Save</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {isLoading ? (

@@ -132,10 +132,12 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Reports & Export</h1>
-        <p className="text-muted-foreground">Export your data for doctor visits</p>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Reports & Export</h1>
+          <p className="text-muted-foreground">Export your data for doctor visits</p>
+        </div>
       </div>
 
       <Card>

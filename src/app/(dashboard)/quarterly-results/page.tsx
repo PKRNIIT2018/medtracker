@@ -42,21 +42,23 @@ export default function QuarterlyResultsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-3xl font-bold tracking-tight">Quarterly Results</h1><p className="text-muted-foreground">Lab test results organized by quarter</p></div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setQuarterLabel(""); setResultDate(""); setNotes(""); } }}>
-          <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Batch</DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Quarterly Result Batch</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2"><Label>Quarter Label</Label><Input placeholder="e.g. Q1 2026" value={quarterLabel} onChange={(e) => setQuarterLabel(e.target.value)} required /></div>
-              <div className="space-y-2"><Label>Date</Label><Input type="date" value={resultDate} onChange={(e) => setResultDate(e.target.value)} required /></div>
-              <div className="space-y-2"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-              <Button type="submit" className="w-full" disabled={createResult.isPending}>Save</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div><h1 className="text-3xl font-bold tracking-tight">Quarterly Results</h1><p className="text-muted-foreground">Lab test results organized by quarter</p></div>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setQuarterLabel(""); setResultDate(""); setNotes(""); } }}>
+            <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Batch</DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Quarterly Result Batch</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2"><Label>Quarter Label</Label><Input placeholder="e.g. Q1 2026" value={quarterLabel} onChange={(e) => setQuarterLabel(e.target.value)} required /></div>
+                <div className="space-y-2"><Label>Date</Label><Input type="date" value={resultDate} onChange={(e) => setResultDate(e.target.value)} required /></div>
+                <div className="space-y-2"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+                <Button type="submit" className="w-full" disabled={createResult.isPending}>Save</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {isLoading ? (

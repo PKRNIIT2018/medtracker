@@ -206,12 +206,13 @@ export default function MedicationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Medications</h1>
-          <p className="text-muted-foreground">Manage your medications</p>
-        </div>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Medications</h1>
+            <p className="text-muted-foreground">Manage your medications</p>
+          </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger className={buttonVariants({ variant: "default" })}>
             <Plus className="mr-2 h-4 w-4" />
@@ -243,6 +244,7 @@ export default function MedicationsPage() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
       </div>
 
       {!isLoading && medications && medications.some((m) => m.is_active) && (
@@ -330,8 +332,8 @@ export default function MedicationsPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {medications.map((med) => (
-            <Card key={med.id} className={cn(!med.is_active && "opacity-70")}>
+          {medications.map((med, i) => (
+            <Card key={med.id} className={cn("animate-fade-in", !med.is_active && "opacity-70")} style={{ animationDelay: `${i * 60}ms` }}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">

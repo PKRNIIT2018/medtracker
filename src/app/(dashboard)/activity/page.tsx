@@ -57,21 +57,23 @@ export default function ActivityPage() {
   const grouped = entries ? groupByDate([...entries]) : [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-3xl font-bold tracking-tight">Activity</h1><p className="text-muted-foreground">Track your daily steps and calories</p></div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSteps(""); setCalories(""); setNotes(""); } }}>
-          <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Log Activity</DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Log Activity</DialogTitle></DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2"><Label>Steps</Label><Input type="number" min="0" value={steps} onChange={(e) => setSteps(e.target.value)} required /></div>
-              <div className="space-y-2"><Label>Calories Burned (optional, kcal)</Label><Input type="number" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} /></div>
-              <div className="space-y-2"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-              <Button type="submit" className="w-full" disabled={createEntry.isPending}>Save</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div><h1 className="text-3xl font-bold tracking-tight">Activity</h1><p className="text-muted-foreground">Track your daily steps and calories</p></div>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSteps(""); setCalories(""); setNotes(""); } }}>
+            <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Log Activity</DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Log Activity</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2"><Label>Steps</Label><Input type="number" min="0" value={steps} onChange={(e) => setSteps(e.target.value)} required /></div>
+                <div className="space-y-2"><Label>Calories Burned (optional, kcal)</Label><Input type="number" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+                <Button type="submit" className="w-full" disabled={createEntry.isPending}>Save</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {isLoading ? (

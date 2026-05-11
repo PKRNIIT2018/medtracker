@@ -181,12 +181,13 @@ export default function VitalsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Vitals</h1>
-          <p className="text-muted-foreground">Track blood pressure, HbA1c, and weight</p>
-        </div>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Vitals</h1>
+            <p className="text-muted-foreground">Track blood pressure, HbA1c, and weight</p>
+          </div>
 <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setTab("blood-pressure"); } }}>
   <DialogTrigger className={buttonVariants({ variant: "default" })}><Plus className="mr-2 h-4 w-4" />Add Reading</DialogTrigger>
   <DialogContent>
@@ -206,6 +207,7 @@ export default function VitalsPage() {
     />
   </DialogContent>
 </Dialog>
+        </div>
       </div>
 
       <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditId(null); setEditType(null); } }}>

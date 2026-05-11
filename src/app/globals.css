@@ -162,3 +162,15 @@
     @apply transition-colors duration-150;
   }
 }
+
+@layer utilities {
+  .page-header-bg {
+    background: linear-gradient(135deg, color-mix(in oklch, var(--primary) 8%, transparent) 0%, color-mix(in oklch, var(--primary) 2%, transparent) 60%, transparent 100%);
+  }
+  .animate-stagger-1 { animation-delay: 80ms; }
+  .animate-stagger-2 { animation-delay: 160ms; }
+  .animate-stagger-3 { animation-delay: 240ms; }
+  .animate-stagger-4 { animation-delay: 320ms; }
+  .animate-stagger-5 { animation-delay: 400ms; }
+  .animate-stagger-6 { animation-delay: 480ms; }
+}

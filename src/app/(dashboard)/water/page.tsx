@@ -115,43 +115,45 @@ export default function WaterPage() {
   const sortedDates = grouped ? Object.keys(grouped).sort((a, b) => b.localeCompare(a)) : [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Hydration</h1>
-          <p className="text-muted-foreground">Track your daily fluid intake</p>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Hydration</h1>
+            <p className="text-muted-foreground">Track your daily fluid intake</p>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setDialogAmount(""); setDialogType("water"); } }}>
+            <DialogTrigger className={buttonVariants({ variant: "default" })}>
+              <Plus className="mr-2 h-4 w-4" />Add Drink
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Drink</DialogTitle></DialogHeader>
+              <form onSubmit={handleDialogSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dialog-type">Type</Label>
+                  <Select value={dialogType} onValueChange={(v) => v && setDialogType(v as BeverageType)}>
+                    <SelectTrigger id="dialog-type" className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {BEVERAGES.map((b) => (
+                        <SelectItem key={b.type} value={b.type}>
+                          <span className="flex items-center gap-2">
+                            <b.icon className={`h-4 w-4 ${b.color}`} />
+                            {b.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount (ml)</Label>
+                  <Input id="amount" type="number" min="1" placeholder="e.g. 250" value={dialogAmount} onChange={(e) => setDialogAmount(e.target.value)} required />
+                </div>
+                <Button type="submit" className="w-full" disabled={addWater.isPending}>Add</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setDialogAmount(""); setDialogType("water"); } }}>
-          <DialogTrigger className={buttonVariants({ variant: "default" })}>
-            <Plus className="mr-2 h-4 w-4" />Add Drink
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Drink</DialogTitle></DialogHeader>
-            <form onSubmit={handleDialogSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="dialog-type">Type</Label>
-                <Select value={dialogType} onValueChange={(v) => v && setDialogType(v as BeverageType)}>
-                  <SelectTrigger id="dialog-type" className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {BEVERAGES.map((b) => (
-                      <SelectItem key={b.type} value={b.type}>
-                        <span className="flex items-center gap-2">
-                          <b.icon className={`h-4 w-4 ${b.color}`} />
-                          {b.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount (ml)</Label>
-                <Input id="amount" type="number" min="1" placeholder="e.g. 250" value={dialogAmount} onChange={(e) => setDialogAmount(e.target.value)} required />
-              </div>
-              <Button type="submit" className="w-full" disabled={addWater.isPending}>Add</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <Card>

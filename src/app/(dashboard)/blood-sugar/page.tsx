@@ -151,28 +151,30 @@ export default function BloodSugarPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Blood Sugar</h1>
-          <p className="text-muted-foreground">Track your blood sugar readings</p>
-        </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-          <DialogTrigger className={buttonVariants({ variant: "default" })}>
-            <Plus className="mr-2 h-4 w-4" />Add Reading
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Blood Sugar Reading</DialogTitle></DialogHeader>
-            <BloodSugarForm form={form} onChange={setForm} onSubmit={handleSubmit} errors={errors} isPending={createReading.isPending} submitLabel="Save Reading" />
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header-bg rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Blood Sugar</h1>
+            <p className="text-muted-foreground">Track your blood sugar readings</p>
+          </div>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+            <DialogTrigger className={buttonVariants({ variant: "default" })}>
+              <Plus className="mr-2 h-4 w-4" />Add Reading
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Blood Sugar Reading</DialogTitle></DialogHeader>
+              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleSubmit} errors={errors} isPending={createReading.isPending} submitLabel="Save Reading" />
+            </DialogContent>
+          </Dialog>
 
-        <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingId(null); resetForm(); } }}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Edit Blood Sugar Reading</DialogTitle></DialogHeader>
-            <BloodSugarForm form={form} onChange={setForm} onSubmit={handleEditSubmit} errors={errors} isPending={updateReading.isPending} submitLabel="Update Reading" />
-          </DialogContent>
-        </Dialog>
+          <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingId(null); resetForm(); } }}>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Edit Blood Sugar Reading</DialogTitle></DialogHeader>
+              <BloodSugarForm form={form} onChange={setForm} onSubmit={handleEditSubmit} errors={errors} isPending={updateReading.isPending} submitLabel="Update Reading" />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {readings && readings.length > 0 && (
