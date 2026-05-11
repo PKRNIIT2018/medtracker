@@ -108,6 +108,13 @@ export function getPanelLevel(
   }
 }
 
+export const panelBorderColors: Record<PanelLevel, string> = {
+  low: "border-t-red-500",
+  normal: "border-t-green-500",
+  borderline: "border-t-amber-400",
+  high: "border-t-red-500",
+};
+
 export const panelLevelColors: Record<PanelLevel, string> = {
   low: "text-red-600 dark:text-red-400",
   normal: "text-green-600 dark:text-green-400",

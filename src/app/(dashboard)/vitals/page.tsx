@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { format, parseISO } from "date-fns";
 import { AddVitalsDialogContent } from "@/components/vitals/AddVitalsDialog";
 import { summarizeBloodPressure } from "@/features/vitals/summary";
 import { SummaryCard } from "@/components/vitals/SummaryCard";
-import { getBpBorderColor, getBpStatusLabel, getPanelLevel, panelLevelColors, panelStatusIcons, panelStatusLabels } from "@/lib/vitals-colors";
+import { getBpBorderColor, getBpStatusLabel, getPanelLevel, panelLevelColors, panelBorderColors, panelStatusIcons, panelStatusLabels } from "@/lib/vitals-colors";
 
 const dateStr = format(new Date(), "yyyy-MM-dd");
 
@@ -306,97 +306,91 @@ export default function VitalsPage() {
             </Card>
           ))}
         </TabsContent>
-        <TabsContent value="blood-panel" className="pt-4">
+        <TabsContent value="blood-panel" className="space-y-4 pt-4">
           {!panelReadings?.length ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">No blood panel readings yet. Add your lab results to track cholesterol, HbA1c, and other markers over time.</CardContent></Card>
           ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="whitespace-nowrap">Date</TableHead>
-                    {panelFields.map((f) => (
-                      <TableHead key={f.key} className="whitespace-nowrap">
-                        <div>{f.label}</div>
-                        <div className="text-xs font-normal text-muted-foreground">{f.range}</div>
-                      </TableHead>
-                    ))}
-                    <TableHead className="w-16" />
-                  </TableRow>
-                  <TableRow className="bg-muted/30">
-                    <TableCell colSpan={panelFields.length + 2} className="text-xs text-muted-foreground">
-                      <span className="flex items-center gap-3">
-                        <span>▲ <span className="text-red-600 dark:text-red-400">High</span></span>
-                        <span>▼ <span className="text-red-600 dark:text-red-400">Low</span></span>
-                        <span>✓ <span className="text-green-600 dark:text-green-400">Normal</span></span>
-                        <span>⚠ <span className="text-amber-600 dark:text-amber-400">Borderline</span></span>
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {panelReadings.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{r.reading_date}</TableCell>
+            <>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Normal</span>
+                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Borderline</span>
+                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> High / Low</span>
+              </div>
+              {panelReadings.map((r) => (
+                <Card key={r.id}>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-sm font-medium">{r.reading_date}</CardTitle>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit blood panel"
+                        onClick={() => {
+                          setEditId(r.id);
+                          setEditType("panel");
+                          setPanelForm({
+                            reading_date: r.reading_date,
+                            s_chol: r.s_chol?.toString() ?? "",
+                            s_tag: r.s_tag?.toString() ?? "",
+                            s_hdl: r.s_hdl?.toString() ?? "",
+                            non_hdl: r.non_hdl?.toString() ?? "",
+                            s_ck: r.s_ck?.toString() ?? "",
+                            b_hba1c_dc: r.b_hba1c_dc?.toString() ?? "",
+                            b_hba1c_if: r.b_hba1c_if?.toString() ?? "",
+                            notes: r.notes ?? "",
+                          });
+                          setEditOpen(true);
+                        }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete blood panel"><Trash2 className="h-3.5 w-3.5" /></Button>} />
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Blood Panel Reading</AlertDialogTitle>
+                            <AlertDialogDescription>Are you sure you want to delete this blood panel reading? This action cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="flex justify-end gap-2">
+                            <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction render={<Button variant="destructive" onClick={async () => { await supabase.from("blood_panel").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-panel"] }); }} />}>Delete</AlertDialogAction>
+                          </div>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {r.notes && <p className="text-xs text-muted-foreground mb-3">{r.notes}</p>}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {panelFields.map((f) => {
                         const val = r[f.key as keyof typeof r] as number | null;
                         const level = getPanelLevel(val, f.key);
+                        const borderColor = level ? panelBorderColors[level] : "border-t-muted";
                         return (
-                          <TableCell key={f.key} className="whitespace-nowrap">
-                            {val != null ? (
-                              <span className={cn("font-medium", level ? panelLevelColors[level] : "")} title={level ? `${f.label}: ${val} ${f.unit} — ${panelStatusLabels[level]}` : undefined} aria-label={level ? `${f.label}: ${val} ${f.unit} — ${panelStatusLabels[level]}` : undefined}>
-                                {level && <span aria-hidden="true">{panelStatusIcons[level]} </span>}
-                                {val} <span className="text-xs text-muted-foreground">{f.unit}</span>
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
+                          <div key={f.key} className={cn("rounded-lg border bg-card p-3 border-t-4 space-y-1.5 transition-colors", borderColor)}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium leading-none">{f.label}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>
+                              </div>
+                              {level && (
+                                <Badge variant="outline" className={cn("shrink-0 text-xs", panelLevelColors[level])}>
+                                  {panelStatusIcons[level]} {panelStatusLabels[level]}
+                                </Badge>
+                              )}
+                            </div>
+                            <div>
+                              {val != null ? (
+                                <span className="text-xl font-bold">{val} <span className="text-sm font-normal text-muted-foreground">{f.unit}</span></span>
+                              ) : (
+                                <span className="text-muted-foreground italic text-sm">Not measured</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{f.range}</p>
+                          </div>
                         );
                       })}
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex gap-0.5">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit blood panel"
-                            onClick={() => {
-                              setEditId(r.id);
-                              setEditType("panel");
-                              setPanelForm({
-                                reading_date: r.reading_date,
-                                s_chol: r.s_chol?.toString() ?? "",
-                                s_tag: r.s_tag?.toString() ?? "",
-                                s_hdl: r.s_hdl?.toString() ?? "",
-                                non_hdl: r.non_hdl?.toString() ?? "",
-                                s_ck: r.s_ck?.toString() ?? "",
-                                b_hba1c_dc: r.b_hba1c_dc?.toString() ?? "",
-                                b_hba1c_if: r.b_hba1c_if?.toString() ?? "",
-                                notes: r.notes ?? "",
-                              });
-                              setEditOpen(true);
-                            }}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete blood panel"><Trash2 className="h-3.5 w-3.5" /></Button>} />
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Blood Panel Reading</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this blood panel reading? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <div className="flex justify-end gap-2">
-                                <AlertDialogCancel render={<Button variant="outline" />}>Cancel</AlertDialogCancel>
-                                <AlertDialogAction render={<Button variant="destructive" onClick={async () => { await supabase.from("blood_panel").update({ deleted_at: new Date().toISOString() }).eq("id", r.id); qc.invalidateQueries({ queryKey: ["blood-panel"] }); }} />}>Delete</AlertDialogAction>
-                              </div>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
           )}
         </TabsContent>
       </Tabs>
