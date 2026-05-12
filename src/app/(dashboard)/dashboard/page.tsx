@@ -284,7 +284,7 @@ export default function DashboardPage() {
 }
 
 function AgpDashboardSection() {
-  const { metrics, chart, isLoading, hasData } = useAgpData();
+  const { metrics, chart, mealData, isLoading, hasData } = useAgpData();
 
   if (isLoading) {
     return (
@@ -309,22 +309,22 @@ function AgpDashboardSection() {
     );
   }
 
-  if (!hasData || !metrics || !chart) return null;
+  if (!hasData || !metrics || !chart || !mealData) return null;
 
   return (
     <div className="space-y-3 animate-fade-in">
       <h2 className="text-lg font-semibold flex items-center gap-2">
         <Activity className="h-5 w-5 text-blue-600" />
         Ambulatory Glucose Profile
-        <span className="text-xs font-normal text-muted-foreground">(Last 30 days — {metrics.readings} readings, {metrics.days} days)</span>
+        <span className="text-xs font-normal text-muted-foreground">(Last 30 days — {metrics.readings} readings, {metrics.days} days, ~{Math.round(metrics.readings / metrics.days)}/day)</span>
       </h2>
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Modal Day (5th–95th Percentile)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Meal-Context AGP</CardTitle>
           </CardHeader>
           <CardContent>
-            <AgpChart data={chart} />
+            <AgpChart mealData={mealData} />
           </CardContent>
         </Card>
         <Card>
@@ -332,7 +332,7 @@ function AgpDashboardSection() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Metrics</CardTitle>
           </CardHeader>
           <CardContent>
-            <AgpMetrics metrics={metrics} />
+            <AgpMetrics metrics={metrics} mealStats={mealData.mealStats} />
           </CardContent>
         </Card>
       </div>

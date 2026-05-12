@@ -1,10 +1,11 @@
 "use client";
 
-import type { AgpMetrics } from "../agp-utils";
+import type { AgpMetrics, MealSlotStats } from "../agp-utils";
 import { cn } from "@/lib/utils";
 
 interface AgpMetricsProps {
   metrics: AgpMetrics;
+  mealStats?: MealSlotStats[];
 }
 
 function GaugeBar({ label, value, target, color, suffix = "%" }: { label: string; value: number; target: number; color: string; suffix?: string }) {
@@ -28,7 +29,7 @@ function GaugeBar({ label, value, target, color, suffix = "%" }: { label: string
   );
 }
 
-export function AgpMetrics({ metrics }: AgpMetricsProps) {
+export function AgpMetrics({ metrics, mealStats }: AgpMetricsProps) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
@@ -38,7 +39,7 @@ export function AgpMetrics({ metrics }: AgpMetricsProps) {
         </div>
         <div className="space-y-1 text-center">
           <p className="text-2xl font-bold tabular-nums">{metrics.gmi.toFixed(1)}%</p>
-          <p className="text-xs text-muted-foreground">GMI</p>
+          <p className="text-xs text-muted-foreground">GMI*</p>
         </div>
         <div className="space-y-1 text-center">
           <p className="text-2xl font-bold tabular-nums">{metrics.cv.toFixed(1)}%</p>
@@ -49,6 +50,29 @@ export function AgpMetrics({ metrics }: AgpMetricsProps) {
           <p className="text-xs text-muted-foreground">Readings<br />{metrics.days} days</p>
         </div>
       </div>
+
+      <div className="rounded-md border bg-muted/30 px-3 py-2">
+        <p className="text-[10px] leading-relaxed text-muted-foreground">
+          *GMI formula was validated on CGM data (288 readings/day). With {metrics.readings} readings over {metrics.days} days ({Math.round(metrics.readings / metrics.days)}/day), this is an approximation.
+        </p>
+      </div>
+
+      {mealStats && mealStats.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground">Meal Context Averages</p>
+          <div className="space-y-1">
+            {mealStats.map((s) => (
+              <div key={s.mealSlot} className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{s.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-medium">{s.avg.toFixed(1)}</span>
+                  <span className="text-[10px] text-muted-foreground/60">n={s.count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground">Time in Ranges</p>

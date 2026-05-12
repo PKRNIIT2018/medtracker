@@ -24,7 +24,7 @@ export function AgpReport() {
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(today);
 
-  const { metrics, chart, isLoading, hasData } = useAgpDataByDateRange(dateFrom, dateTo);
+  const { metrics, chart, mealData, isLoading, hasData } = useAgpDataByDateRange(dateFrom, dateTo);
 
   async function exportPDF() {
     if (!metrics) return;
@@ -78,26 +78,47 @@ export function AgpReport() {
 
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
 
-    if (chart && chart.bins.length > 0) {
+    if (mealData && mealData.mealStats.length > 0) {
       doc.setFontSize(12);
-      doc.text("Modal Day Percentiles (selected time points)", 14, y);
+      doc.text("Meal-Context Percentiles", 14, y);
       y += 8;
 
-      const percentileRows = chart.bins
-        .filter((b) => b.p50 > 0)
-        .filter((_, i) => i % 4 === 0)
-        .map((b) => [
-          b.time,
-          b.p5.toFixed(1),
-          b.p25.toFixed(1),
-          b.p50.toFixed(1),
-          b.p75.toFixed(1),
-          b.p95.toFixed(1),
-        ]);
+      const mealRows = mealData.mealStats.map((s) => [
+        s.label,
+        s.count.toString(),
+        s.avg.toFixed(1),
+        s.p5.toFixed(1),
+        s.p25.toFixed(1),
+        s.median.toFixed(1),
+        s.p75.toFixed(1),
+        s.p95.toFixed(1),
+      ]);
 
       autoTable(doc, {
-        head: [["Time", "5th", "25th", "50th", "75th", "95th"]],
-        body: percentileRows,
+        head: [["Meal Slot", "n", "Avg", "5th", "25th", "50th", "75th", "95th"]],
+        body: mealRows,
+        startY: y,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [37, 99, 235] },
+      });
+      y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
+    }
+
+    if (mealData && mealData.prePostDeltas.length > 0) {
+      doc.setFontSize(12);
+      doc.text("Pre/Post Meal Deltas", 14, y);
+      y += 8;
+
+      const deltaRows = mealData.prePostDeltas.map((d) => [
+        d.mealLabel,
+        d.pairCount.toString(),
+        `${d.medianDelta.toFixed(1)} mmol/L`,
+        d.spikeCount.toString(),
+      ]);
+
+      autoTable(doc, {
+        head: [["Meal", "Pairs", "Median Δ", "Spikes (>3.0)"]],
+        body: deltaRows,
         startY: y,
         styles: { fontSize: 8 },
         headStyles: { fillColor: [37, 99, 235] },
@@ -143,17 +164,17 @@ export function AgpReport() {
         </Card>
       )}
 
-      {!isLoading && hasData && metrics && chart && (
+      {!isLoading && hasData && metrics && chart && mealData && (
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Modal Day (5th–95th Percentile)
+                Meal-Context AGP
                 <span className="ml-2 text-xs font-normal">— {metrics.readings} readings, {metrics.days} days</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <AgpChart data={chart} />
+              <AgpChart mealData={mealData} />
             </CardContent>
           </Card>
           <Card>
@@ -161,7 +182,7 @@ export function AgpReport() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Metrics</CardTitle>
             </CardHeader>
             <CardContent>
-              <AgpMetrics metrics={metrics} />
+              <AgpMetrics metrics={metrics} mealStats={mealData.mealStats} />
             </CardContent>
           </Card>
         </div>

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { BloodSugar } from "@/types/database";
-import { computeAgpMetrics, computeAgpModalDay, type AgpMetrics, type AgpChartData, type AgpReading } from "./agp-utils";
+import { computeAgpMetrics, computeAgpModalDay, computeAgpMealData, type AgpMetrics, type AgpChartData, type AgpMealData, type AgpReading } from "./agp-utils";
 
 const supabase = createClient();
 
@@ -10,6 +10,7 @@ function readingsToAgp(readings: BloodSugar[]): AgpReading[] {
     level: r.level,
     time: r.reading_time ?? "",
     date: r.reading_date,
+    mealSlot: r.meal_slot,
   }));
 }
 
@@ -38,6 +39,7 @@ export function useAgpReadingsByDateRange(dateFrom: string, dateTo: string) {
 export function useAgpDataByDateRange(dateFrom: string, dateTo: string): {
   metrics: AgpMetrics | null;
   chart: AgpChartData | null;
+  mealData: AgpMealData | null;
   isLoading: boolean;
   error: Error | null;
   hasData: boolean;
@@ -45,14 +47,15 @@ export function useAgpDataByDateRange(dateFrom: string, dateTo: string): {
   const { data: readings, isLoading, error } = useAgpReadingsByDateRange(dateFrom, dateTo);
 
   if (!readings || readings.length === 0) {
-    return { metrics: null, chart: null, isLoading, error: error ?? null, hasData: false };
+    return { metrics: null, chart: null, mealData: null, isLoading, error: error ?? null, hasData: false };
   }
 
   const agpReadings = readingsToAgp(readings);
   const metrics = computeAgpMetrics(agpReadings);
   const chart = computeAgpModalDay(agpReadings);
+  const mealData = computeAgpMealData(agpReadings);
 
-  return { metrics, chart, isLoading, error: error ?? null, hasData: true };
+  return { metrics, chart, mealData, isLoading, error: error ?? null, hasData: true };
 }
 
 const THIRTY_DAYS_AGO = new Date();
@@ -63,6 +66,7 @@ const today = new Date().toISOString().split("T")[0];
 export function useAgpData(): {
   metrics: AgpMetrics | null;
   chart: AgpChartData | null;
+  mealData: AgpMealData | null;
   isLoading: boolean;
   error: Error | null;
   hasData: boolean;
