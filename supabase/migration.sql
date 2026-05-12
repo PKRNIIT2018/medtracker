@@ -449,6 +449,40 @@ ALTER TABLE medications DROP COLUMN IF EXISTS product_links;
 ALTER TABLE medications ADD COLUMN IF NOT EXISTS stock_count INTEGER CHECK (stock_count >= 0);
 ALTER TABLE medications ADD COLUMN IF NOT EXISTS ai_summary TEXT;
 
+-- 16. doctors
+CREATE TABLE IF NOT EXISTS doctors (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name        VARCHAR(200) NOT NULL,
+  specialty   VARCHAR(200),
+  phone       VARCHAR(50),
+  email       VARCHAR(200),
+  is_primary  BOOLEAN NOT NULL DEFAULT false,
+  notes       TEXT,
+  deleted_at  TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors (user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_doctors_primary ON doctors (user_id, is_primary) WHERE is_primary = true AND deleted_at IS NULL;
+
+ALTER TABLE doctors ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_doctors_all" ON doctors;
+CREATE POLICY "user_doctors_all"
+  ON doctors
+  FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+DROP TRIGGER IF EXISTS trg_doctors_updated_at ON doctors;
+CREATE TRIGGER trg_doctors_updated_at
+  BEFORE UPDATE ON doctors
+  FOR EACH ROW
+  WHEN (OLD.* IS DISTINCT FROM NEW.*)
+  EXECUTE FUNCTION update_updated_at();
+
 -- Grant table permissions to roles (needed because tables created via SQL Editor)
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated, service_role;

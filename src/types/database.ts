@@ -154,6 +154,20 @@ export interface Appointment {
   created_at: string
 }
 
+export interface Doctor {
+  id: string
+  user_id: string
+  name: string
+  specialty: string | null
+  phone: string | null
+  email: string | null
+  is_primary: boolean
+  notes: string | null
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface PushSubscription {
   id: string
   user_id: string
