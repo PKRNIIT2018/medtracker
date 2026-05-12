@@ -13,16 +13,18 @@ import { format } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Papa from "papaparse";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, Activity } from "lucide-react";
+import { AgpReport } from "@/features/reports/AgpReport";
 
 const supabase = createClient();
 
-type ExportType = "blood_sugar" | "blood_pressure" | "medication_intake";
+type ExportType = "blood_sugar" | "blood_pressure" | "medication_intake" | "agp";
 
 const exportLabels: Record<ExportType, string> = {
   blood_sugar: "Blood Sugar",
   blood_pressure: "Blood Pressure",
   medication_intake: "Medication Intake",
+  agp: "AGP Report",
 };
 
 export default function ReportsPage() {
@@ -30,17 +32,57 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState(format(new Date().setDate(1), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
 
+  if (exportType === "agp") {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="page-header-bg rounded-xl p-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Reports & Export</h1>
+            <p className="text-muted-foreground">Generate reports for doctor visits</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-600" />
+              Ambulatory Glucose Profile
+            </CardTitle>
+            <CardDescription>
+              Select a date range to generate an AGP report. AGP provides a standardized summary of glucose patterns
+              using percentile charts and time-in-range metrics. A minimum of 14 days of data is recommended.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <Label>Report Type</Label>
+              <Select value={exportType} onValueChange={(v) => v && setExportType(v as ExportType)}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(exportLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <AgpReport />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   async function fetchData() {
     const { data, error } = await supabase
       .from(exportType)
       .select("*")
       .is("deleted_at", null)
       .gte(
-        exportType === "medication_intake" ? "taken_date" : exportType === "blood_sugar" ? "reading_date" : "reading_date",
+        exportType === "medication_intake" ? "taken_date" : "reading_date",
         dateFrom
       )
       .lte(
-        exportType === "medication_intake" ? "taken_date" : exportType === "blood_sugar" ? "reading_date" : "reading_date",
+        exportType === "medication_intake" ? "taken_date" : "reading_date",
         dateTo
       )
       .order(exportType === "medication_intake" ? "taken_date" : "reading_date", { ascending: true });

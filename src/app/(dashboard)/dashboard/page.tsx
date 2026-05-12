@@ -14,6 +14,9 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { getBpBorderColor, getBpStatusLabel, getSugarLevel } from "@/lib/vitals-colors";
+import { useAgpData } from "@/features/blood-sugar/agp-hooks";
+import { AgpChart } from "@/features/blood-sugar/components/AgpChart";
+import { AgpMetrics } from "@/features/blood-sugar/components/AgpMetrics";
 
 const supabase = createClient();
 
@@ -273,6 +276,65 @@ export default function DashboardPage() {
             <Plus className="mr-1 h-3 w-3" />Log BP
           </Button>
         </StatCard>
+      </div>
+
+      <AgpDashboardSection />
+    </div>
+  );
+}
+
+function AgpDashboardSection() {
+  const { metrics, chart, isLoading, hasData } = useAgpData();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3 animate-fade-in">
+        <h2 className="text-lg font-semibold">Ambulatory Glucose Profile</h2>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-xl border bg-card p-4">
+            <div className="h-[280px] flex items-center justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+            </div>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <div className="space-y-3 animate-pulse">
+              <div className="h-10 w-full rounded bg-muted" />
+              <div className="h-10 w-full rounded bg-muted" />
+              <div className="h-10 w-full rounded bg-muted" />
+              <div className="h-10 w-full rounded bg-muted" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasData || !metrics || !chart) return null;
+
+  return (
+    <div className="space-y-3 animate-fade-in">
+      <h2 className="text-lg font-semibold flex items-center gap-2">
+        <Activity className="h-5 w-5 text-blue-600" />
+        Ambulatory Glucose Profile
+        <span className="text-xs font-normal text-muted-foreground">(Last 30 days — {metrics.readings} readings, {metrics.days} days)</span>
+      </h2>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Modal Day (5th–95th Percentile)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AgpChart data={chart} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AgpMetrics metrics={metrics} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
