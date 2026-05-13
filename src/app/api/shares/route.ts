@@ -39,6 +39,10 @@ export async function POST(request: Request) {
 
     if (doctorUser) {
       doctorId = doctorUser.id;
+      // Promote existing user to doctor
+      await admin
+        .from("user_roles")
+        .upsert({ user_id: doctorId, role: "doctor" }, { onConflict: "user_id" });
     } else {
       // Auto-create doctor account
       const { data: newUser, error: createError } = await admin.auth.admin.createUser({
