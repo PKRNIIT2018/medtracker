@@ -188,3 +188,27 @@ export interface AuditLog {
   new_data: Record<string, unknown> | null
   created_at: string
 }
+
+export type UserRole = 'user' | 'doctor' | 'admin';
+
+export interface UserRoleRecord {
+  id: string
+  user_id: string
+  role: UserRole
+  created_at: string
+}
+
+export interface SharedPatient {
+  id: string
+  doctor_id: string
+  patient_id: string
+  access_tables: string[]
+  created_at: string
+}
+
+export interface PatientWithInfo {
+  patient_id: string
+  full_name: string | null
+  email: string | null
+  access_tables: string[]
+}

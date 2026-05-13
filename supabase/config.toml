@@ -1,0 +1,5 @@
+[auth]
+enabled = true
+# Hook: inject user_role into JWT app_metadata
+[auth.hook]
+custom_access_token = "public.custom_access_token_hook"

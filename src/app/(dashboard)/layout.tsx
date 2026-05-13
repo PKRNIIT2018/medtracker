@@ -21,10 +21,13 @@ import {
   Lock,
   Calendar,
   ClipboardCheck,
+  Users,
+  Share2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { PinGate, isPinVerified, clearPinSession, refreshPinSession } from "@/components/pin-gate";
 import { ErrorBoundary } from "@/components/error-boundary";
+import type { UserRole } from "@/types/database";
 
 const navGroups = [
   {
@@ -62,6 +65,7 @@ const navGroups = [
     label: "Settings",
     items: [
       { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/settings/sharing", label: "Sharing", icon: Share2 },
     ],
   },
 ];
@@ -80,6 +84,7 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     async function checkPinStatus() {
@@ -87,6 +92,7 @@ export default function DashboardLayout({
       if (user) {
         setUserEmail(user.email ?? null);
         setUserName(user.user_metadata?.full_name ?? null);
+        setUserRole((user.app_metadata?.user_role as UserRole) ?? null);
         const { data: settings } = await supabase
           .from("user_settings")
           .select("app_pin_enabled")
@@ -192,12 +198,41 @@ export default function DashboardLayout({
         {(userName || userEmail) && (
           <div className="border-b px-4 py-3">
             <p className="text-sm font-medium truncate">{userName ?? userEmail}</p>
-            {userName && userEmail && (
-              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
-            )}
+            <div className="flex items-center gap-2">
+              {userEmail && (
+                <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+              )}
+              {userRole && (
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/50">
+                  {userRole}
+                </span>
+              )}
+            </div>
           </div>
         )}
         <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+          {userRole === "doctor" && (
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
+                Practice
+              </p>
+              <div className="space-y-0.5">
+                <Link
+                  href="/doctor/patients"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    pathname.startsWith("/doctor")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <Users className="h-4 w-4" />
+                  My Patients
+                </Link>
+              </div>
+            </div>
+          )}
           {navGroups.map((group) => (
             <div key={group.label}>
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
