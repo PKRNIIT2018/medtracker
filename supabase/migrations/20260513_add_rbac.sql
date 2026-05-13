@@ -119,9 +119,12 @@ GRANT USAGE ON SCHEMA public TO supabase_auth_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO supabase_auth_admin;
 GRANT EXECUTE ON FUNCTION public.custom_access_token_hook TO supabase_auth_admin;
 
--- Revoke user_roles and shared_patients from public
-REVOKE ALL ON public.user_roles     FROM anon, authenticated;
-REVOKE ALL ON public.shared_patients FROM anon, authenticated;
+-- Revoke from anon, grant base access to authenticated (RLS handles row filtering)
+REVOKE ALL ON public.user_roles     FROM anon;
+REVOKE ALL ON public.shared_patients FROM anon;
+
+GRANT SELECT ON public.user_roles TO authenticated;
+GRANT SELECT, INSERT, DELETE ON public.shared_patients TO authenticated;
 
 -- ============================================================
 -- 6. Role promotion function (callable by admins via service_role)
