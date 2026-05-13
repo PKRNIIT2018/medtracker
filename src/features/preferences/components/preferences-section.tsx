@@ -1,15 +1,12 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useUserSettings, useSettingsMutation } from "@/features/settings/hooks";
+import { useSettingsMutation } from "@/features/settings/hooks";
 
 export function PreferencesSection() {
-  const { data: settings } = useUserSettings();
   const updateSettings = useSettingsMutation();
   const { theme, setTheme } = useTheme();
 
@@ -28,17 +25,6 @@ export function PreferencesSection() {
                 <Icon className="mr-2 h-4 w-4" />{value.charAt(0).toUpperCase() + value.slice(1)}
               </Button>
             ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>Health Goals</CardTitle><CardDescription>Set your daily targets</CardDescription></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Daily Water Goal (ml)</Label>
-            <Input type="number" defaultValue={settings?.daily_water_goal_ml ?? 2000}
-              onBlur={(e) => updateSettings.mutate({ daily_water_goal_ml: Number(e.target.value) })} />
           </div>
         </CardContent>
       </Card>
